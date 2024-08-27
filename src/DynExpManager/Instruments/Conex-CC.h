@@ -13,9 +13,9 @@
 
 namespace DynExpInstr
 {
-	class PI_C_862;
+	class ConexCC;
 
-	namespace PI_C_862_Tasks
+	namespace ConexCC_Tasks
 	{
 		class InitTask : public PositionerStageTasks::InitTask
 		{
@@ -105,9 +105,9 @@ namespace DynExpInstr
 		};
 	}
 
-	class PI_C_862StageData : public PositionerStageData
+	class ConexCCStageData : public PositionerStageData
 	{
-		friend class PI_C_862_Tasks::UpdateTask;
+		friend class ConexCC_Tasks::UpdateTask;
 
 	public:
 		struct LM629StatusType
@@ -139,8 +139,8 @@ namespace DynExpInstr
 			MacroStorageOverflow
 		};
 
-		PI_C_862StageData() = default;
-		virtual ~PI_C_862StageData() = default;
+		ConexCCStageData() = default;
+		virtual ~ConexCCStageData() = default;
 
 		auto GetLM629Status() const noexcept { return LM629Status; }
 		auto GetErrorCode() const noexcept { return ErrorCode; }
@@ -149,7 +149,7 @@ namespace DynExpInstr
 
 	private:
 		void ResetImpl(dispatch_tag<PositionerStageData>) override final;
-		virtual void ResetImpl(dispatch_tag<PI_C_862StageData>) {};
+		virtual void ResetImpl(dispatch_tag<ConexCCStageData>) {};
 
 		virtual bool IsMovingChild() const noexcept override;
 		virtual bool HasArrivedChild() const noexcept override;
@@ -160,13 +160,13 @@ namespace DynExpInstr
 		size_t NumFailedStatusUpdateAttempts = 0;
 	};
 
-	class PI_C_862_Params : public PositionerStageParams
+	class ConexCC_Params : public PositionerStageParams
 	{
 	public:
-		PI_C_862_Params(DynExp::ItemIDType ID, const DynExp::DynExpCore& Core) : PositionerStageParams(ID, Core) {}
-		virtual ~PI_C_862_Params() = default;
+		ConexCC_Params(DynExp::ItemIDType ID, const DynExp::DynExpCore& Core) : PositionerStageParams(ID, Core) {}
+		virtual ~ConexCC_Params() = default;
 
-		virtual const char* GetParamClassTag() const noexcept override { return "PI_C_862_Params"; }
+		virtual const char* GetParamClassTag() const noexcept override { return "ConexCC_Params"; }
 
 		Param<DynExp::ObjectLink<DynExp::SerialCommunicationHardwareAdapter>> HardwareAdapter = { *this, GetCore().GetHardwareAdapterManager(),
 			"HardwareAdapter", "Serial port", "Underlying hardware adapter of this instrument", DynExpUI::Icons::HardwareAdapter };
@@ -174,36 +174,36 @@ namespace DynExpInstr
 			"Address (0-F) of the Mercury controller to be used", true, "0" };
 
 	private:
-		void ConfigureParamsImpl(dispatch_tag<PositionerStageParams>) override final { ConfigureParamsImpl(dispatch_tag<PI_C_862_Params>()); }
-		virtual void ConfigureParamsImpl(dispatch_tag<PI_C_862_Params>) {}
+		void ConfigureParamsImpl(dispatch_tag<PositionerStageParams>) override final { ConfigureParamsImpl(dispatch_tag<ConexCC_Params>()); }
+		virtual void ConfigureParamsImpl(dispatch_tag<ConexCC_Params>) {}
 	};
 
-	class PI_C_862_Configurator : public PositionerStageConfigurator
+	class ConexCC_Configurator : public PositionerStageConfigurator
 	{
 	public:
-		using ObjectType = PI_C_862;
-		using ParamsType = PI_C_862_Params;
+		using ObjectType = ConexCC;
+		using ParamsType = ConexCC_Params;
 
-		PI_C_862_Configurator() = default;
-		virtual ~PI_C_862_Configurator() = default;
+		ConexCC_Configurator() = default;
+		virtual ~ConexCC_Configurator() = default;
 
 	private:
-		virtual DynExp::ParamsBasePtrType MakeParams(DynExp::ItemIDType ID, const DynExp::DynExpCore& Core) const override { return DynExp::MakeParams<PI_C_862_Configurator>(ID, Core); }
+		virtual DynExp::ParamsBasePtrType MakeParams(DynExp::ItemIDType ID, const DynExp::DynExpCore& Core) const override { return DynExp::MakeParams<ConexCC_Configurator>(ID, Core); }
 	};
 
-	class PI_C_862 : public PositionerStage
+	class ConexCC : public PositionerStage
 	{
 	public:
-		using ParamsType = PI_C_862_Params;
-		using ConfigType = PI_C_862_Configurator;
-		using InstrumentDataType = PI_C_862StageData;
+		using ParamsType = ConexCC_Params;
+		using ConfigType = ConexCC_Configurator;
+		using InstrumentDataType = ConexCCStageData;
 
 		static std::string AnswerToNumberString(std::string&& Answer, const char* StartCode);
 
 		constexpr static auto Name() noexcept { return "PI C-862"; }
 
-		PI_C_862(const std::thread::id OwnerThreadID, DynExp::ParamsBasePtrType&& Params);
-		virtual ~PI_C_862() {}
+		ConexCC(const std::thread::id OwnerThreadID, DynExp::ParamsBasePtrType&& Params);
+		virtual ~ConexCC() {}
 
 		virtual std::string GetName() const override { return Name(); }
 
@@ -214,23 +214,23 @@ namespace DynExpInstr
 		virtual PositionerStageData::PositionType GetMaxVelocity() const noexcept override { return 500000; }
 		virtual PositionerStageData::PositionType GetDefaultVelocity() const noexcept override { return 200000; }
 
-		virtual void SetHome() const override { MakeAndEnqueueTask<PI_C_862_Tasks::SetHomeTask>(); }
-		virtual void Reference(DirectionType Direction = DirectionType::Forward, DynExp::TaskBase::CallbackType CallbackFunc = nullptr) const override { MakeAndEnqueueTask<PI_C_862_Tasks::ReferenceTask>(Direction, CallbackFunc); }
-		virtual void SetVelocity(PositionerStageData::PositionType Velocity) const override { MakeAndEnqueueTask<PI_C_862_Tasks::SetVelocityTask>(Velocity); }
+		virtual void SetHome() const override { MakeAndEnqueueTask<ConexCC_Tasks::SetHomeTask>(); }
+		virtual void Reference(DirectionType Direction = DirectionType::Forward, DynExp::TaskBase::CallbackType CallbackFunc = nullptr) const override { MakeAndEnqueueTask<ConexCC_Tasks::ReferenceTask>(Direction, CallbackFunc); }
+		virtual void SetVelocity(PositionerStageData::PositionType Velocity) const override { MakeAndEnqueueTask<ConexCC_Tasks::SetVelocityTask>(Velocity); }
 
-		virtual void MoveToHome(DynExp::TaskBase::CallbackType CallbackFunc = nullptr) const override { MakeAndEnqueueTask<PI_C_862_Tasks::MoveToHomeTask>(CallbackFunc); }
-		virtual void MoveAbsolute(PositionerStageData::PositionType Position, DynExp::TaskBase::CallbackType CallbackFunc = nullptr) const override { MakeAndEnqueueTask<PI_C_862_Tasks::MoveAbsoluteTask>(Position, CallbackFunc); }
-		virtual void MoveRelative(PositionerStageData::PositionType Position, DynExp::TaskBase::CallbackType CallbackFunc = nullptr) const override { MakeAndEnqueueTask<PI_C_862_Tasks::MoveRelativeTask>(Position, CallbackFunc); }
-		virtual void StopMotion() const override { MakeAndEnqueueTask<PI_C_862_Tasks::StopMotionTask>(); }
+		virtual void MoveToHome(DynExp::TaskBase::CallbackType CallbackFunc = nullptr) const override { MakeAndEnqueueTask<ConexCC_Tasks::MoveToHomeTask>(CallbackFunc); }
+		virtual void MoveAbsolute(PositionerStageData::PositionType Position, DynExp::TaskBase::CallbackType CallbackFunc = nullptr) const override { MakeAndEnqueueTask<ConexCC_Tasks::MoveAbsoluteTask>(Position, CallbackFunc); }
+		virtual void MoveRelative(PositionerStageData::PositionType Position, DynExp::TaskBase::CallbackType CallbackFunc = nullptr) const override { MakeAndEnqueueTask<ConexCC_Tasks::MoveRelativeTask>(Position, CallbackFunc); }
+		virtual void StopMotion() const override { MakeAndEnqueueTask<ConexCC_Tasks::StopMotionTask>(); }
 
 	private:
 		virtual void OnErrorChild() const override;
 
 		void ResetImpl(dispatch_tag<PositionerStage>) override final;
-		virtual void ResetImpl(dispatch_tag<PI_C_862>) {}
+		virtual void ResetImpl(dispatch_tag<ConexCC>) {}
 
-		virtual std::unique_ptr<DynExp::InitTaskBase> MakeInitTask() const override { return DynExp::MakeTask<PI_C_862_Tasks::InitTask>(); }
-		virtual std::unique_ptr<DynExp::ExitTaskBase> MakeExitTask() const override { return DynExp::MakeTask<PI_C_862_Tasks::ExitTask>(); }
-		virtual std::unique_ptr<DynExp::UpdateTaskBase> MakeUpdateTask() const override { return DynExp::MakeTask<PI_C_862_Tasks::UpdateTask>(); }
+		virtual std::unique_ptr<DynExp::InitTaskBase> MakeInitTask() const override { return DynExp::MakeTask<ConexCC_Tasks::InitTask>(); }
+		virtual std::unique_ptr<DynExp::ExitTaskBase> MakeExitTask() const override { return DynExp::MakeTask<ConexCC_Tasks::ExitTask>(); }
+		virtual std::unique_ptr<DynExp::UpdateTaskBase> MakeUpdateTask() const override { return DynExp::MakeTask<ConexCC_Tasks::UpdateTask>(); }
 	};
 }

@@ -5,11 +5,12 @@
 
 namespace DynExpInstr
 {
-	void PI_C_862_Tasks::InitTask::InitFuncImpl(dispatch_tag<PositionerStageTasks::InitTask>, DynExp::InstrumentInstance& Instance)
+	// 1. Initialize (reset and select controller):
+	void ConexCC_Tasks::InitTask::InitFuncImpl(dispatch_tag<PositionerStageTasks::InitTask>, DynExp::InstrumentInstance& Instance)
 	{
 		{
-			auto InstrParams = DynExp::dynamic_Params_cast<PI_C_862>(Instance.ParamsGetter());
-			auto InstrData = DynExp::dynamic_InstrumentData_cast<PI_C_862>(Instance.InstrumentDataGetter());
+			auto InstrParams = DynExp::dynamic_Params_cast<ConexCC>(Instance.ParamsGetter());
+			auto InstrData = DynExp::dynamic_InstrumentData_cast<ConexCC>(Instance.InstrumentDataGetter());
 
 			Instance.LockObject(InstrParams->HardwareAdapter, InstrData->HardwareAdapter);
 			InstrData->HardwareAdapter->Clear();
@@ -25,11 +26,12 @@ namespace DynExpInstr
 		InitFuncImpl(dispatch_tag<InitTask>(), Instance);
 	}
 
-	void PI_C_862_Tasks::ExitTask::ExitFuncImpl(dispatch_tag<PositionerStageTasks::ExitTask>, DynExp::InstrumentInstance& Instance)
+	// 2. Stop the task (abort motion):
+	void ConexCC_Tasks::ExitTask::ExitFuncImpl(dispatch_tag<PositionerStageTasks::ExitTask>, DynExp::InstrumentInstance& Instance)
 	{
 		ExitFuncImpl(dispatch_tag<ExitTask>(), Instance);
 
-		auto InstrData = DynExp::dynamic_InstrumentData_cast<PI_C_862>(Instance.InstrumentDataGetter());
+		auto InstrData = DynExp::dynamic_InstrumentData_cast<ConexCC>(Instance.InstrumentDataGetter());
 
 		try
 		{
@@ -45,11 +47,12 @@ namespace DynExpInstr
 		Instance.UnlockObject(InstrData->HardwareAdapter);
 	}
 
-	void PI_C_862_Tasks::UpdateTask::UpdateFuncImpl(dispatch_tag<PositionerStageTasks::UpdateTask>, DynExp::InstrumentInstance& Instance)
+	// 3. Asks for position, velocity and status and updates the corresponding variables (that might be displayed in the GUI):
+	void ConexCC_Tasks::UpdateTask::UpdateFuncImpl(dispatch_tag<PositionerStageTasks::UpdateTask>, DynExp::InstrumentInstance& Instance)
 	{
 		try
 		{
-			auto InstrData = DynExp::dynamic_InstrumentData_cast<PI_C_862>(Instance.InstrumentDataGetter());
+			auto InstrData = DynExp::dynamic_InstrumentData_cast<ConexCC>(Instance.InstrumentDataGetter());
 			bool UpdateError = false;
 
 			try
@@ -57,16 +60,16 @@ namespace DynExpInstr
 				// Tell position
 				*InstrData->HardwareAdapter << "TP";
 				InstrData->SetCurrentPosition(Util::StrToT<PositionerStageData::PositionType>(
-					PI_C_862::AnswerToNumberString(InstrData->HardwareAdapter->WaitForLine(3), "P:")));
+					ConexCC::AnswerToNumberString(InstrData->HardwareAdapter->WaitForLine(3), "P:")));
 
 				// Tell programmed velocity
 				*InstrData->HardwareAdapter << "TY";
 				InstrData->SetVelocity(Util::StrToT<PositionerStageData::PositionType>(
-					PI_C_862::AnswerToNumberString(InstrData->HardwareAdapter->WaitForLine(3), "Y:")));
+					ConexCC::AnswerToNumberString(InstrData->HardwareAdapter->WaitForLine(3), "Y:")));
 
 				// Tell status
 				*InstrData->HardwareAdapter << "TS";
-				std::stringstream StatusStream(PI_C_862::AnswerToNumberString(InstrData->HardwareAdapter->WaitForLine(3), "S:"));
+				std::stringstream StatusStream(ConexCC::AnswerToNumberString(InstrData->HardwareAdapter->WaitForLine(3), "S:"));
 				StatusStream.exceptions(std::ofstream::failbit | std::ofstream::badbit);
 				StatusStream << std::hex;
 
@@ -80,7 +83,7 @@ namespace DynExpInstr
 				StatusStream >> Byte;	// Extract error codes
 				if (Byte > 0xFF)
 					throw Util::InvalidDataException("Received an unexpected error code.");
-				InstrData->ErrorCode = static_cast<PI_C_862StageData::ErrorCodeType>(Byte);
+				InstrData->ErrorCode = static_cast<ConexCCStageData::ErrorCodeType>(Byte);
 			}
 			catch ([[maybe_unused]] const Util::InvalidDataException& e)
 			{
@@ -101,7 +104,7 @@ namespace DynExpInstr
 
 			return;
 		}
-		// Issued by PI_C_862::AnswerToNumberString() or StrToT() if unexpected or no data has been received.
+		// Issued by ConexCC::AnswerToNumberString() or StrToT() if unexpected or no data has been received.
 		catch (const Util::InvalidDataException& e)
 		{
 			Instance.GetOwner().SetWarning(e);
@@ -119,9 +122,10 @@ namespace DynExpInstr
 		UpdateFuncImpl(dispatch_tag<UpdateTask>(), Instance);
 	}
 
-	DynExp::TaskResultType PI_C_862_Tasks::SetHomeTask::RunChild(DynExp::InstrumentInstance& Instance)
+	// 4. Set (define) home position:
+	DynExp::TaskResultType ConexCC_Tasks::SetHomeTask::RunChild(DynExp::InstrumentInstance& Instance)
 	{
-		auto InstrData = DynExp::dynamic_InstrumentData_cast<PI_C_862>(Instance.InstrumentDataGetter());
+		auto InstrData = DynExp::dynamic_InstrumentData_cast<ConexCC>(Instance.InstrumentDataGetter());
 
 		// Define home
 		*InstrData->HardwareAdapter << "DH";
@@ -129,9 +133,10 @@ namespace DynExpInstr
 		return {};
 	}
 
-	DynExp::TaskResultType PI_C_862_Tasks::ReferenceTask::RunChild(DynExp::InstrumentInstance& Instance)
+	// 5. Find the front or back edge:
+	DynExp::TaskResultType ConexCC_Tasks::ReferenceTask::RunChild(DynExp::InstrumentInstance& Instance)
 	{
-		auto InstrData = DynExp::dynamic_InstrumentData_cast<PI_C_862>(Instance.InstrumentDataGetter());
+		auto InstrData = DynExp::dynamic_InstrumentData_cast<ConexCC>(Instance.InstrumentDataGetter());
 
 		// Find edge
 		if (Direction == PositionerStage::DirectionType::Forward)
@@ -142,9 +147,10 @@ namespace DynExpInstr
 		return {};
 	}
 
-	DynExp::TaskResultType PI_C_862_Tasks::SetVelocityTask::RunChild(DynExp::InstrumentInstance& Instance)
+	// 6. Set the velocity:
+	DynExp::TaskResultType ConexCC_Tasks::SetVelocityTask::RunChild(DynExp::InstrumentInstance& Instance)
 	{
-		auto InstrData = DynExp::dynamic_InstrumentData_cast<PI_C_862>(Instance.InstrumentDataGetter());
+		auto InstrData = DynExp::dynamic_InstrumentData_cast<ConexCC>(Instance.InstrumentDataGetter());
 
 		// Set velocity
 		*InstrData->HardwareAdapter << "SV" + Util::ToStr(Velocity);
@@ -152,9 +158,10 @@ namespace DynExpInstr
 		return {};
 	}
 
-	DynExp::TaskResultType PI_C_862_Tasks::MoveToHomeTask::RunChild(DynExp::InstrumentInstance& Instance)
+	// 7. Go to home position:
+	DynExp::TaskResultType ConexCC_Tasks::MoveToHomeTask::RunChild(DynExp::InstrumentInstance& Instance)
 	{
-		auto InstrData = DynExp::dynamic_InstrumentData_cast<PI_C_862>(Instance.InstrumentDataGetter());
+		auto InstrData = DynExp::dynamic_InstrumentData_cast<ConexCC>(Instance.InstrumentDataGetter());
 
 		// Go home
 		*InstrData->HardwareAdapter << "GH";
@@ -162,9 +169,10 @@ namespace DynExpInstr
 		return {};
 	}
 
-	DynExp::TaskResultType PI_C_862_Tasks::MoveAbsoluteTask::RunChild(DynExp::InstrumentInstance& Instance)
+	// 8. Move to an absolute position: 
+	DynExp::TaskResultType ConexCC_Tasks::MoveAbsoluteTask::RunChild(DynExp::InstrumentInstance& Instance)
 	{
-		auto InstrData = DynExp::dynamic_InstrumentData_cast<PI_C_862>(Instance.InstrumentDataGetter());
+		auto InstrData = DynExp::dynamic_InstrumentData_cast<ConexCC>(Instance.InstrumentDataGetter());
 
 		// Move absolute
 		*InstrData->HardwareAdapter << "MA" + Util::ToStr(Position);
@@ -172,9 +180,10 @@ namespace DynExpInstr
 		return {};
 	}
 
-	DynExp::TaskResultType PI_C_862_Tasks::MoveRelativeTask::RunChild(DynExp::InstrumentInstance& Instance)
+	// 9. Move by a distance (to a relative position):
+	DynExp::TaskResultType ConexCC_Tasks::MoveRelativeTask::RunChild(DynExp::InstrumentInstance& Instance)
 	{
-		auto InstrData = DynExp::dynamic_InstrumentData_cast<PI_C_862>(Instance.InstrumentDataGetter());
+		auto InstrData = DynExp::dynamic_InstrumentData_cast<ConexCC>(Instance.InstrumentDataGetter());
 
 		// Move relative
 		*InstrData->HardwareAdapter << "MR" + Util::ToStr(Position);
@@ -182,9 +191,10 @@ namespace DynExpInstr
 		return {};
 	}
 
-	DynExp::TaskResultType PI_C_862_Tasks::StopMotionTask::RunChild(DynExp::InstrumentInstance& Instance)
+	// 10. Abort motion:
+	DynExp::TaskResultType ConexCC_Tasks::StopMotionTask::RunChild(DynExp::InstrumentInstance& Instance)
 	{
-		auto InstrData = DynExp::dynamic_InstrumentData_cast<PI_C_862>(Instance.InstrumentDataGetter());
+		auto InstrData = DynExp::dynamic_InstrumentData_cast<ConexCC>(Instance.InstrumentDataGetter());
 
 		// Abort motion
 		*InstrData->HardwareAdapter << "AB";
@@ -192,26 +202,26 @@ namespace DynExpInstr
 		return DynExp::TaskResultType();
 	}
 
-	void PI_C_862StageData::ResetImpl(dispatch_tag<PositionerStageData>)
+	void ConexCCStageData::ResetImpl(dispatch_tag<PositionerStageData>)
 	{
 		LM629Status.Set(0);
 		ErrorCode = NoError;
 		NumFailedStatusUpdateAttempts = 0;
 
-		ResetImpl(dispatch_tag<PI_C_862StageData>());
+		ResetImpl(dispatch_tag<ConexCCStageData>());
 	}
 
-	bool PI_C_862StageData::IsMovingChild() const noexcept
+	bool ConexCCStageData::IsMovingChild() const noexcept
 	{
 		return !LM629Status.TrajectoryComplete();
 	}
 
-	bool PI_C_862StageData::HasArrivedChild() const noexcept
+	bool ConexCCStageData::HasArrivedChild() const noexcept
 	{
 		return LM629Status.TrajectoryComplete();
 	}
 
-	bool PI_C_862StageData::HasFailedChild() const noexcept
+	bool ConexCCStageData::HasFailedChild() const noexcept
 	{
 		return ErrorCode != 0
 			|| LM629Status.CommandError() || LM629Status.PositionLimitExceeded()
@@ -219,7 +229,7 @@ namespace DynExpInstr
 	}
 
 	// StartCode is something like "X:". In any case, it has a length of two characters
-	std::string PI_C_862::AnswerToNumberString(std::string&& Answer, const char* StartCode)
+	std::string ConexCC::AnswerToNumberString(std::string&& Answer, const char* StartCode)
 	{
 		auto Pos = Answer.find(StartCode);
 
@@ -229,21 +239,21 @@ namespace DynExpInstr
 		return Answer.substr(Pos + 2);
 	}
 
-	PI_C_862::PI_C_862(const std::thread::id OwnerThreadID, DynExp::ParamsBasePtrType&& Params)
+	ConexCC::ConexCC(const std::thread::id OwnerThreadID, DynExp::ParamsBasePtrType&& Params)
 		: PositionerStage(OwnerThreadID, std::move(Params))
 	{
 	}
 
-	void PI_C_862::OnErrorChild() const
+	void ConexCC::OnErrorChild() const
 	{
-		auto InstrData = DynExp::dynamic_InstrumentData_cast<PI_C_862>(GetInstrumentData());
+		auto InstrData = DynExp::dynamic_InstrumentData_cast<ConexCC>(GetInstrumentData());
 
 		// Abort motion.
 		*InstrData->HardwareAdapter << "AB";
 	}
 
-	void PI_C_862::ResetImpl(dispatch_tag<PositionerStage>)
+	void ConexCC::ResetImpl(dispatch_tag<PositionerStage>)
 	{
-		ResetImpl(dispatch_tag<PI_C_862>());
+		ResetImpl(dispatch_tag<ConexCC>());
 	}
 }
