@@ -16,11 +16,11 @@ namespace DynExpInstr
 			InstrData->HardwareAdapter->Clear();
 
 			// Reset and select controller.
-			*InstrData->HardwareAdapter << "RT";
+			*InstrData->HardwareAdapter << "1RS"; 
 			*InstrData->HardwareAdapter << std::string(1, static_cast<char>(1)) + InstrParams->MercuryAddress.Get();
 
 			// Ignore version and factory string and await startup.
-			InstrData->HardwareAdapter->WaitForLine(3, std::chrono::milliseconds(50));
+			InstrData->HardwareAdapter->WaitForLine(3, std::chrono::milliseconds(50)); // What waiting time is this? Does it need to be adjusted?
 		} // InstrParams and InstrData unlocked here.
 
 		InitFuncImpl(dispatch_tag<InitTask>(), Instance);
@@ -36,7 +36,7 @@ namespace DynExpInstr
 		try
 		{
 			// Abort motion.
-			*InstrData->HardwareAdapter << "AB";
+			*InstrData->HardwareAdapter << "1ST";
 		}
 		catch (...)
 		{
@@ -48,6 +48,7 @@ namespace DynExpInstr
 	}
 
 	// 3. Asks for position, velocity and status and updates the corresponding variables (that might be displayed in the GUI):
+	// Q: What is this function doing?
 	void ConexCC_Tasks::UpdateTask::UpdateFuncImpl(dispatch_tag<PositionerStageTasks::UpdateTask>, DynExp::InstrumentInstance& Instance)
 	{
 		try
@@ -128,7 +129,7 @@ namespace DynExpInstr
 		auto InstrData = DynExp::dynamic_InstrumentData_cast<ConexCC>(Instance.InstrumentDataGetter());
 
 		// Define home
-		*InstrData->HardwareAdapter << "DH";
+		*InstrData->HardwareAdapter << "1OR";
 
 		return {};
 	}
@@ -140,9 +141,9 @@ namespace DynExpInstr
 
 		// Find edge
 		if (Direction == PositionerStage::DirectionType::Forward)
-			*InstrData->HardwareAdapter << "FE0";
+			*InstrData->HardwareAdapter << "1PA0";
 		else
-			*InstrData->HardwareAdapter << "FE1";
+			*InstrData->HardwareAdapter << "1PA0";
 
 		return {};
 	}
@@ -153,7 +154,7 @@ namespace DynExpInstr
 		auto InstrData = DynExp::dynamic_InstrumentData_cast<ConexCC>(Instance.InstrumentDataGetter());
 
 		// Set velocity
-		*InstrData->HardwareAdapter << "SV" + Util::ToStr(Velocity);
+		*InstrData->HardwareAdapter << "1VA" + Util::ToStr(Velocity);
 
 		return {};
 	}
@@ -164,7 +165,7 @@ namespace DynExpInstr
 		auto InstrData = DynExp::dynamic_InstrumentData_cast<ConexCC>(Instance.InstrumentDataGetter());
 
 		// Go home
-		*InstrData->HardwareAdapter << "GH";
+		*InstrData->HardwareAdapter << "1PA0";
 
 		return {};
 	}
@@ -175,7 +176,7 @@ namespace DynExpInstr
 		auto InstrData = DynExp::dynamic_InstrumentData_cast<ConexCC>(Instance.InstrumentDataGetter());
 
 		// Move absolute
-		*InstrData->HardwareAdapter << "MA" + Util::ToStr(Position);
+		*InstrData->HardwareAdapter << "1PA" + Util::ToStr(Position);
 
 		return {};
 	}
@@ -186,7 +187,7 @@ namespace DynExpInstr
 		auto InstrData = DynExp::dynamic_InstrumentData_cast<ConexCC>(Instance.InstrumentDataGetter());
 
 		// Move relative
-		*InstrData->HardwareAdapter << "MR" + Util::ToStr(Position);
+		*InstrData->HardwareAdapter << "1PR" + Util::ToStr(Position);
 
 		return {};
 	}
@@ -197,11 +198,13 @@ namespace DynExpInstr
 		auto InstrData = DynExp::dynamic_InstrumentData_cast<ConexCC>(Instance.InstrumentDataGetter());
 
 		// Abort motion
-		*InstrData->HardwareAdapter << "AB";
+		*InstrData->HardwareAdapter << "1ST";
 
 		return DynExp::TaskResultType();
 	}
 
+	// Q: What are the functions below?
+	// Q: What is LM629?
 	void ConexCCStageData::ResetImpl(dispatch_tag<PositionerStageData>)
 	{
 		LM629Status.Set(0);
