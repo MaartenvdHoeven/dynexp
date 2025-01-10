@@ -43,7 +43,7 @@
 #include "HardwareAdapters/HardwareAdapterEthernet.h"
 
 // Instruments
-#include "Instruments/Conex-CC.h"
+#include "Instruments/NP_Conex_CC.h"
 #include "Instruments/DummyCamera.h"
 #include "Instruments/DummyDataStreamInstrument.h"
 #include "Instruments/InterModuleCommunicator.h"
@@ -138,7 +138,7 @@ int main(int argc, char *argv[])
 	> HardwareAdapterLib;
 
 	constexpr DynExp::InstrumentLibrary<
-		DynExpInstr::Conex-CC,
+		DynExpInstr::NP_Conex_CC,
 		DynExpInstr::DummyCamera,
 		DynExpInstr::DummyDataStreamInstrument,
 		DynExpInstr::InterModuleCommunicator,

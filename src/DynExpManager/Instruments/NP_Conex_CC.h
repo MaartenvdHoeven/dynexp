@@ -1,8 +1,8 @@
 // This file is part of DynExp.
 
 /**
- * @file Conex-CC.h
- * @brief Implementation of an instrument to control the Newport rotation stage with the Conex-CC controller.
+ * @file NP_Conex_CC.h
+ * @brief Implementation of an instrument to control the Newport rotation stage with the NP_Conex_CC controller.
 */
 
 #pragma once
@@ -13,9 +13,9 @@
 
 namespace DynExpInstr
 {
-	class ConexCC;
+	class NP_Conex_CC; // forward declaration
 
-	namespace ConexCC_Tasks
+	namespace NP_Conex_CC_Tasks
 	{
 		class InitTask : public PositionerStageTasks::InitTask
 		{
@@ -105,12 +105,12 @@ namespace DynExpInstr
 		};
 	}
 
-	class ConexCCStageData : public PositionerStageData
+	class NP_Conex_CCStageData : public PositionerStageData
 	{
-		friend class ConexCC_Tasks::UpdateTask;
+		friend class NP_Conex_CC_Tasks::UpdateTask;
 
 	public:
-		struct LM629StatusType
+		struct Conex_CCStatusType
 		{
 			constexpr void Set(uint8_t ByteCode) noexcept { this->ByteCode = ByteCode; }
 
@@ -139,71 +139,71 @@ namespace DynExpInstr
 			MacroStorageOverflow
 		};
 
-		ConexCCStageData() = default;
-		virtual ~ConexCCStageData() = default;
+		NP_Conex_CCStageData() = default;
+		virtual ~NP_Conex_CCStageData() = default;
 
-		auto GetLM629Status() const noexcept { return LM629Status; }
+		auto GetConex_CCStatus() const noexcept { return Conex_CCStatus; }
 		auto GetErrorCode() const noexcept { return ErrorCode; }
 
 		DynExp::LinkedObjectWrapperContainer<DynExp::SerialCommunicationHardwareAdapter> HardwareAdapter;
 
 	private:
 		void ResetImpl(dispatch_tag<PositionerStageData>) override final;
-		virtual void ResetImpl(dispatch_tag<ConexCCStageData>) {};
+		virtual void ResetImpl(dispatch_tag<NP_Conex_CCStageData>) {};
 
 		virtual bool IsMovingChild() const noexcept override;
 		virtual bool HasArrivedChild() const noexcept override;
 		virtual bool HasFailedChild() const noexcept override;
 
-		LM629StatusType LM629Status;
+		Conex_CCStatusType Conex_CCStatus;
 		ErrorCodeType ErrorCode = NoError;
 		size_t NumFailedStatusUpdateAttempts = 0;
 	};
 
-	class ConexCC_Params : public PositionerStageParams
+	class NP_Conex_CC_Params : public PositionerStageParams
 	{
 	public:
-		ConexCC_Params(DynExp::ItemIDType ID, const DynExp::DynExpCore& Core) : PositionerStageParams(ID, Core) {}
-		virtual ~ConexCC_Params() = default;
+		NP_Conex_CC_Params(DynExp::ItemIDType ID, const DynExp::DynExpCore& Core) : PositionerStageParams(ID, Core) {}
+		virtual ~NP_Conex_CC_Params() = default;
 
-		virtual const char* GetParamClassTag() const noexcept override { return "ConexCC_Params"; }
+		virtual const char* GetParamClassTag() const noexcept override { return "NP_Conex_CC_Params"; }
 
 		Param<DynExp::ObjectLink<DynExp::SerialCommunicationHardwareAdapter>> HardwareAdapter = { *this, GetCore().GetHardwareAdapterManager(),
 			"HardwareAdapter", "Serial port", "Underlying hardware adapter of this instrument", DynExpUI::Icons::HardwareAdapter };
-		Param<ParamsConfigDialog::TextType> MercuryAddress = { *this, "MercuryAddress", "Mercury address",
-			"Address (0-F) of the Mercury controller to be used", true, "0" };
+		Param<ParamsConfigDialog::TextType> ConexAddress = { *this, "ConexAddress", "Conex address",
+			"Address (0-F) of the Conex controller to be used", true, "0" };
 
 	private:
-		void ConfigureParamsImpl(dispatch_tag<PositionerStageParams>) override final { ConfigureParamsImpl(dispatch_tag<ConexCC_Params>()); }
-		virtual void ConfigureParamsImpl(dispatch_tag<ConexCC_Params>) {}
+		void ConfigureParamsImpl(dispatch_tag<PositionerStageParams>) override final { ConfigureParamsImpl(dispatch_tag<NP_Conex_CC_Params>()); }
+		virtual void ConfigureParamsImpl(dispatch_tag<NP_Conex_CC_Params>) {}
 	};
 
-	class ConexCC_Configurator : public PositionerStageConfigurator
+	class NP_Conex_CC_Configurator : public PositionerStageConfigurator
 	{
 	public:
-		using ObjectType = ConexCC;
-		using ParamsType = ConexCC_Params;
+		using ObjectType = NP_Conex_CC;
+		using ParamsType = NP_Conex_CC_Params;
 
-		ConexCC_Configurator() = default;
-		virtual ~ConexCC_Configurator() = default;
+		NP_Conex_CC_Configurator() = default;
+		virtual ~NP_Conex_CC_Configurator() = default;
 
 	private:
-		virtual DynExp::ParamsBasePtrType MakeParams(DynExp::ItemIDType ID, const DynExp::DynExpCore& Core) const override { return DynExp::MakeParams<ConexCC_Configurator>(ID, Core); }
+		virtual DynExp::ParamsBasePtrType MakeParams(DynExp::ItemIDType ID, const DynExp::DynExpCore& Core) const override { return DynExp::MakeParams<NP_Conex_CC_Configurator>(ID, Core); }
 	};
 
-	class ConexCC : public PositionerStage
+	class NP_Conex_CC : public PositionerStage
 	{
 	public:
-		using ParamsType = ConexCC_Params;
-		using ConfigType = ConexCC_Configurator;
-		using InstrumentDataType = ConexCCStageData;
+		using ParamsType = NP_Conex_CC_Params;
+		using ConfigType = NP_Conex_CC_Configurator;
+		using InstrumentDataType = NP_Conex_CCStageData;
 
 		static std::string AnswerToNumberString(std::string&& Answer, const char* StartCode);
 
-		constexpr static auto Name() noexcept { return "PI C-862"; }
+		constexpr static auto Name() noexcept { return "NP Conex-CC"; } // A static function defines the name that appears in the dropdown menu of the GUI.
 
-		ConexCC(const std::thread::id OwnerThreadID, DynExp::ParamsBasePtrType&& Params);
-		virtual ~ConexCC() {}
+		NP_Conex_CC(const std::thread::id OwnerThreadID, DynExp::ParamsBasePtrType&& Params);
+		virtual ~NP_Conex_CC() {}
 
 		virtual std::string GetName() const override { return Name(); }
 
@@ -214,23 +214,23 @@ namespace DynExpInstr
 		virtual PositionerStageData::PositionType GetMaxVelocity() const noexcept override { return 500000; }
 		virtual PositionerStageData::PositionType GetDefaultVelocity() const noexcept override { return 200000; }
 
-		virtual void SetHome() const override { MakeAndEnqueueTask<ConexCC_Tasks::SetHomeTask>(); }
-		virtual void Reference(DirectionType Direction = DirectionType::Forward, DynExp::TaskBase::CallbackType CallbackFunc = nullptr) const override { MakeAndEnqueueTask<ConexCC_Tasks::ReferenceTask>(Direction, CallbackFunc); }
-		virtual void SetVelocity(PositionerStageData::PositionType Velocity) const override { MakeAndEnqueueTask<ConexCC_Tasks::SetVelocityTask>(Velocity); }
+		virtual void SetHome() const override { MakeAndEnqueueTask<NP_Conex_CC_Tasks::SetHomeTask>(); }
+		virtual void Reference(DirectionType Direction = DirectionType::Forward, DynExp::TaskBase::CallbackType CallbackFunc = nullptr) const override { MakeAndEnqueueTask<NP_Conex_CC_Tasks::ReferenceTask>(Direction, CallbackFunc); }
+		virtual void SetVelocity(PositionerStageData::PositionType Velocity) const override { MakeAndEnqueueTask<NP_Conex_CC_Tasks::SetVelocityTask>(Velocity); }
 
-		virtual void MoveToHome(DynExp::TaskBase::CallbackType CallbackFunc = nullptr) const override { MakeAndEnqueueTask<ConexCC_Tasks::MoveToHomeTask>(CallbackFunc); }
-		virtual void MoveAbsolute(PositionerStageData::PositionType Position, DynExp::TaskBase::CallbackType CallbackFunc = nullptr) const override { MakeAndEnqueueTask<ConexCC_Tasks::MoveAbsoluteTask>(Position, CallbackFunc); }
-		virtual void MoveRelative(PositionerStageData::PositionType Position, DynExp::TaskBase::CallbackType CallbackFunc = nullptr) const override { MakeAndEnqueueTask<ConexCC_Tasks::MoveRelativeTask>(Position, CallbackFunc); }
-		virtual void StopMotion() const override { MakeAndEnqueueTask<ConexCC_Tasks::StopMotionTask>(); }
+		virtual void MoveToHome(DynExp::TaskBase::CallbackType CallbackFunc = nullptr) const override { MakeAndEnqueueTask<NP_Conex_CC_Tasks::MoveToHomeTask>(CallbackFunc); }
+		virtual void MoveAbsolute(PositionerStageData::PositionType Position, DynExp::TaskBase::CallbackType CallbackFunc = nullptr) const override { MakeAndEnqueueTask<NP_Conex_CC_Tasks::MoveAbsoluteTask>(Position, CallbackFunc); }
+		virtual void MoveRelative(PositionerStageData::PositionType Position, DynExp::TaskBase::CallbackType CallbackFunc = nullptr) const override { MakeAndEnqueueTask<NP_Conex_CC_Tasks::MoveRelativeTask>(Position, CallbackFunc); }
+		virtual void StopMotion() const override { MakeAndEnqueueTask<NP_Conex_CC_Tasks::StopMotionTask>(); }
 
 	private:
 		virtual void OnErrorChild() const override;
 
 		void ResetImpl(dispatch_tag<PositionerStage>) override final;
-		virtual void ResetImpl(dispatch_tag<ConexCC>) {}
+		virtual void ResetImpl(dispatch_tag<NP_Conex_CC>) {}
 
-		virtual std::unique_ptr<DynExp::InitTaskBase> MakeInitTask() const override { return DynExp::MakeTask<ConexCC_Tasks::InitTask>(); }
-		virtual std::unique_ptr<DynExp::ExitTaskBase> MakeExitTask() const override { return DynExp::MakeTask<ConexCC_Tasks::ExitTask>(); }
-		virtual std::unique_ptr<DynExp::UpdateTaskBase> MakeUpdateTask() const override { return DynExp::MakeTask<ConexCC_Tasks::UpdateTask>(); }
+		virtual std::unique_ptr<DynExp::InitTaskBase> MakeInitTask() const override { return DynExp::MakeTask<NP_Conex_CC_Tasks::InitTask>(); }
+		virtual std::unique_ptr<DynExp::ExitTaskBase> MakeExitTask() const override { return DynExp::MakeTask<NP_Conex_CC_Tasks::ExitTask>(); }
+		virtual std::unique_ptr<DynExp::UpdateTaskBase> MakeUpdateTask() const override { return DynExp::MakeTask<NP_Conex_CC_Tasks::UpdateTask>(); }
 	};
 }
