@@ -2,32 +2,33 @@
 
 #include "stdafx.h"
 #include "NP_Conex_CC.h"
+#include <cstring>
 
 namespace DynExpInstr
 {
 	// 1. Initialize (reset and select controller):
-	// Q: When exactly is this function called?
+	// This function is called, when the Instrument is started in DynExp.
 	void NP_Conex_CC_Tasks::InitTask::InitFuncImpl(dispatch_tag<PositionerStageTasks::InitTask>, DynExp::InstrumentInstance& Instance)
 	{
 		{
-			auto InstrParams = DynExp::dynamic_Params_cast<NP_Conex_CC>(Instance.ParamsGetter());
-			auto InstrData = DynExp::dynamic_InstrumentData_cast<NP_Conex_CC>(Instance.InstrumentDataGetter());
+			auto InstrParams = DynExp::dynamic_Params_cast<NP_Conex_CC>(Instance.ParamsGetter()); // dynamic cast of parameters returned by Instance.ParamsGetter() to the type NP_Conex_CC
+			auto InstrData = DynExp::dynamic_InstrumentData_cast<NP_Conex_CC>(Instance.InstrumentDataGetter()); // Pointer to the InstrParams and InstrData
 
-			Instance.LockObject(InstrParams->HardwareAdapter, InstrData->HardwareAdapter);
-			InstrData->HardwareAdapter->Clear();
+			Instance.LockObject(InstrParams->HardwareAdapter, InstrData->HardwareAdapter); // The hardware adapters of InstrParams and InstrData are locked here.
+			InstrData->HardwareAdapter->Clear(); // clears the hardware adapter
 
 			// Reset and select controller.
-			*InstrData->HardwareAdapter << "1RS"; 
-			*InstrData->HardwareAdapter << std::string(1, static_cast<char>(1)) + InstrParams->ConexAddress.Get();
+			*InstrData->HardwareAdapter << Util::ToStr(InstrParams->ConexAddress.Get()) + "RS";
+			*InstrData->HardwareAdapter << Util::ToStr(InstrParams->ConexAddress.Get()) + "OR";
 
 			// Ignore version and factory string and await startup.
-			InstrData->HardwareAdapter->WaitForLine(3, std::chrono::milliseconds(50)); // Q: What waiting time is this? Does it need to be adjusted?
+			InstrData->HardwareAdapter->WaitForLine(3, std::chrono::milliseconds(50)); // Try out these parameters. Try 3 times and wait for 50 ms each time.
 		} // InstrParams and InstrData unlocked here.
 
 		InitFuncImpl(dispatch_tag<InitTask>(), Instance);
 	}
 
-	// 2. Stop the task (abort motion):
+	// 2. Close the controller:
 	void NP_Conex_CC_Tasks::ExitTask::ExitFuncImpl(dispatch_tag<PositionerStageTasks::ExitTask>, DynExp::InstrumentInstance& Instance)
 	{
 		ExitFuncImpl(dispatch_tag<ExitTask>(), Instance);
@@ -37,7 +38,7 @@ namespace DynExpInstr
 		try
 		{
 			// Abort motion.
-			*InstrData->HardwareAdapter << "1ST";
+			*InstrData->HardwareAdapter << Util::ToStr(InstrParams->ConexAddress.Get()) + "ST";
 		}
 		catch (...)
 		{
@@ -49,29 +50,29 @@ namespace DynExpInstr
 	}
 
 	// 3. Asks for position, velocity and status and updates the corresponding variables (that might be displayed in the GUI):
-	// Q: What is this function doing?
 	void NP_Conex_CC_Tasks::UpdateTask::UpdateFuncImpl(dispatch_tag<PositionerStageTasks::UpdateTask>, DynExp::InstrumentInstance& Instance)
 	{
 		try
 		{
+			auto InstrParams = DynExp::dynamic_Params_cast<NP_Conex_CC>(Instance.ParamsGetter());
 			auto InstrData = DynExp::dynamic_InstrumentData_cast<NP_Conex_CC>(Instance.InstrumentDataGetter());
 			bool UpdateError = false;
 
 			try
 			{
 				// Tell position
-				*InstrData->HardwareAdapter << "TP"; // TODO: not the right command yet
+				*InstrData->HardwareAdapter << Util::ToStr(InstrParams->ConexAddress.Get()) + "TP"; // The output will be something like '1TP10.0000164'. The next line transforms this into the expected format.
 				InstrData->SetCurrentPosition(Util::StrToT<PositionerStageData::PositionType>(
-					NP_Conex_CC::AnswerToNumberString(InstrData->HardwareAdapter->WaitForLine(3), "P:")));
+					NP_Conex_CC::AnswerToNumberString(InstrData->HardwareAdapter->WaitForLine(3), "TP")));
 
 				// Tell programmed velocity
-				*InstrData->HardwareAdapter << "TY"; // TODO: not the right command yet
+				*InstrData->HardwareAdapter << Util::ToStr(InstrParams->ConexAddress.Get()) + "VA?"; // The output will be something like '1VA10'. The next line transforms this into the expected format.
 				InstrData->SetVelocity(Util::StrToT<PositionerStageData::PositionType>(
-					NP_Conex_CC::AnswerToNumberString(InstrData->HardwareAdapter->WaitForLine(3), "Y:")));
+					NP_Conex_CC::AnswerToNumberString(InstrData->HardwareAdapter->WaitForLine(3), "VA")));
 
 				// Tell status
-				*InstrData->HardwareAdapter << "TS"; // TODO: not the right command yet
-				std::stringstream StatusStream(NP_Conex_CC::AnswerToNumberString(InstrData->HardwareAdapter->WaitForLine(3), "S:"));
+				*InstrData->HardwareAdapter << Util::ToStr(InstrParams->ConexAddress.Get()) + "TS"; // The output will be something like '1TS000033'. The next line transforms this into the expected format.
+				std::stringstream StatusStream(NP_Conex_CC::AnswerToNumberString(InstrData->HardwareAdapter->WaitForLine(3), "TS"));
 				StatusStream.exceptions(std::ofstream::failbit | std::ofstream::badbit);
 				StatusStream << std::hex;
 
@@ -127,10 +128,11 @@ namespace DynExpInstr
 	// 4. Set (define) home position:
 	DynExp::TaskResultType NP_Conex_CC_Tasks::SetHomeTask::RunChild(DynExp::InstrumentInstance& Instance)
 	{
+		auto InstrParams = DynExp::dynamic_Params_cast<NP_Conex_CC>(Instance.ParamsGetter());
 		auto InstrData = DynExp::dynamic_InstrumentData_cast<NP_Conex_CC>(Instance.InstrumentDataGetter());
 
 		// Define home
-		*InstrData->HardwareAdapter << "1OR"; // I think this needs more commands: change to configuration state and back etc. 
+		*InstrData->HardwareAdapter << Util::ToStr(InstrParams->ConexAddress.Get()) + "OR"; // I think this needs more commands: change to configuration state and back etc. 
 
 		return {};
 	}
@@ -138,13 +140,14 @@ namespace DynExpInstr
 	// 5. Find the front or back edge:
 	DynExp::TaskResultType NP_Conex_CC_Tasks::ReferenceTask::RunChild(DynExp::InstrumentInstance& Instance)
 	{
+		auto InstrParams = DynExp::dynamic_Params_cast<NP_Conex_CC>(Instance.ParamsGetter());
 		auto InstrData = DynExp::dynamic_InstrumentData_cast<NP_Conex_CC>(Instance.InstrumentDataGetter());
 
 		// Find edge
 		if (Direction == PositionerStage::DirectionType::Forward)
-			*InstrData->HardwareAdapter << "1PA0";
+			*InstrData->HardwareAdapter << Util::ToStr(InstrParams->ConexAddress.Get()) + "PA0";
 		else
-			*InstrData->HardwareAdapter << "1PA0";
+			*InstrData->HardwareAdapter << Util::ToStr(InstrParams->ConexAddress.Get()) + "PA0";
 
 		return {};
 	}
@@ -152,10 +155,11 @@ namespace DynExpInstr
 	// 6. Set the velocity:
 	DynExp::TaskResultType NP_Conex_CC_Tasks::SetVelocityTask::RunChild(DynExp::InstrumentInstance& Instance)
 	{
+		auto InstrParams = DynExp::dynamic_Params_cast<NP_Conex_CC>(Instance.ParamsGetter());
 		auto InstrData = DynExp::dynamic_InstrumentData_cast<NP_Conex_CC>(Instance.InstrumentDataGetter());
 
 		// Set velocity
-		*InstrData->HardwareAdapter << "1VA" + Util::ToStr(Velocity);
+		*InstrData->HardwareAdapter << Util::ToStr(InstrParams->ConexAddress.Get()) + "VA" + Util::ToStr(Velocity);
 
 		return {};
 	}
@@ -163,10 +167,11 @@ namespace DynExpInstr
 	// 7. Go to home position:
 	DynExp::TaskResultType NP_Conex_CC_Tasks::MoveToHomeTask::RunChild(DynExp::InstrumentInstance& Instance)
 	{
-		auto InstrData = DynExp::dynamic_InstrumentData_cast<NP_Conex_CC>(Instance.InstrumentDataGetter()); // Q: What is this InstrData variable?
+		auto InstrParams = DynExp::dynamic_Params_cast<NP_Conex_CC>(Instance.ParamsGetter());
+		auto InstrData = DynExp::dynamic_InstrumentData_cast<NP_Conex_CC>(Instance.InstrumentDataGetter());
 
 		// Go home
-		*InstrData->HardwareAdapter << "1PA0"; // Q: Sends a string via the hardware adapter?
+		*InstrData->HardwareAdapter << Util::ToStr(InstrParams->ConexAddress.Get()) + "PA0";
 
 		return {};
 	}
@@ -174,10 +179,11 @@ namespace DynExpInstr
 	// 8. Move to an absolute position: 
 	DynExp::TaskResultType NP_Conex_CC_Tasks::MoveAbsoluteTask::RunChild(DynExp::InstrumentInstance& Instance)
 	{
+		auto InstrParams = DynExp::dynamic_Params_cast<NP_Conex_CC>(Instance.ParamsGetter());
 		auto InstrData = DynExp::dynamic_InstrumentData_cast<NP_Conex_CC>(Instance.InstrumentDataGetter());
 
 		// Move absolute
-		*InstrData->HardwareAdapter << "1PA" + Util::ToStr(Position);
+		*InstrData->HardwareAdapter << Util::ToStr(InstrParams->ConexAddress.Get()) + "PA" + Util::ToStr(Position);
 
 		return {};
 	}
@@ -185,10 +191,11 @@ namespace DynExpInstr
 	// 9. Move by a distance (to a relative position):
 	DynExp::TaskResultType NP_Conex_CC_Tasks::MoveRelativeTask::RunChild(DynExp::InstrumentInstance& Instance)
 	{
+		auto InstrParams = DynExp::dynamic_Params_cast<NP_Conex_CC>(Instance.ParamsGetter());
 		auto InstrData = DynExp::dynamic_InstrumentData_cast<NP_Conex_CC>(Instance.InstrumentDataGetter());
 
 		// Move relative
-		*InstrData->HardwareAdapter << "1PR" + Util::ToStr(Position);
+		*InstrData->HardwareAdapter << Util::ToStr(InstrParams->ConexAddress.Get()) + "PR" + Util::ToStr(Position);
 
 		return {};
 	}
@@ -196,15 +203,15 @@ namespace DynExpInstr
 	// 10. Abort motion:
 	DynExp::TaskResultType NP_Conex_CC_Tasks::StopMotionTask::RunChild(DynExp::InstrumentInstance& Instance)
 	{
+		auto InstrParams = DynExp::dynamic_Params_cast<NP_Conex_CC>(Instance.ParamsGetter());
 		auto InstrData = DynExp::dynamic_InstrumentData_cast<NP_Conex_CC>(Instance.InstrumentDataGetter());
 
 		// Abort motion
-		*InstrData->HardwareAdapter << "1ST";
+		*InstrData->HardwareAdapter << Util::ToStr(InstrParams->ConexAddress.Get()) + "ST";
 
 		return DynExp::TaskResultType();
 	}
 
-	// Q: What are the functions below?
 	void NP_Conex_CCStageData::ResetImpl(dispatch_tag<PositionerStageData>)
 	{
 		Conex_CCStatus.Set(0);
@@ -231,15 +238,15 @@ namespace DynExpInstr
 			|| Conex_CCStatus.ExcessivePositionError() || Conex_CCStatus.BreakpointReached();
 	}
 
-	// StartCode is something like "X:". In any case, it has a length of two characters
+	// StartCode is nnAA, nn is the controller adress, AA is the command name, e.g. "TP" for tell position
 	std::string NP_Conex_CC::AnswerToNumberString(std::string&& Answer, const char* StartCode)
 	{
-		auto Pos = Answer.find(StartCode);
+		auto Pos = Answer.find(StartCode); // Q: Why is Answer an empty string?
 
-		if (Pos == std::string::npos)
+		if (Pos == std::string::npos) 
 			throw Util::InvalidDataException("Received an unexpected answer.");
 
-		return Answer.substr(Pos + 2);
+		return Answer.substr(Pos + std::strlen(StartCode)); // transform, e.g. '1TP10.0000164' into '10.0000164'
 	}
 
 	NP_Conex_CC::NP_Conex_CC(const std::thread::id OwnerThreadID, DynExp::ParamsBasePtrType&& Params)
@@ -249,10 +256,11 @@ namespace DynExpInstr
 
 	void NP_Conex_CC::OnErrorChild() const
 	{
+		auto InstrParams = DynExp::dynamic_Params_cast<NP_Conex_CC>(Instance.ParamsGetter());
 		auto InstrData = DynExp::dynamic_InstrumentData_cast<NP_Conex_CC>(GetInstrumentData());
 
 		// Abort motion.
-		*InstrData->HardwareAdapter << "1ST";
+		*InstrData->HardwareAdapter << Util::ToStr(InstrParams->ConexAddress.Get()) + "ST";
 	}
 
 	void NP_Conex_CC::ResetImpl(dispatch_tag<PositionerStage>)

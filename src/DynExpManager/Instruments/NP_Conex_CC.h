@@ -171,7 +171,8 @@ namespace DynExpInstr
 		Param<DynExp::ObjectLink<DynExp::SerialCommunicationHardwareAdapter>> HardwareAdapter = { *this, GetCore().GetHardwareAdapterManager(),
 			"HardwareAdapter", "Serial port", "Underlying hardware adapter of this instrument", DynExpUI::Icons::HardwareAdapter };
 		Param<ParamsConfigDialog::TextType> ConexAddress = { *this, "ConexAddress", "Conex address",
-			"Address (1-31) of the Conex controller to be used", true, "0" };
+			"Address (1-31) of the Conex controller to be used", true, "0" }; // T: NumberType instead of TextType. Die Grenzen von 1-31 sollten auch tatsächlich gesetzt werden. Wie z.B. in WidefieldMicroscope.h "	Param<ParamsConfigDialog::NumberType> WidefieldHBTTransitionTime = { *this, "WidefieldHBTTransitionTime", "HBT flip mirror transition time (ms)", "Time it takes to flip the HBT mirror once the duty cycle of the rectangular pulses applied to the flip mirror servo actuator has changed", false, 500, 0, 10000, 10, 0}; "
+
 
 	private:
 		void ConfigureParamsImpl(dispatch_tag<PositionerStageParams>) override final { ConfigureParamsImpl(dispatch_tag<NP_Conex_CC_Params>()); }
