@@ -2,7 +2,7 @@
 
 #include "stdafx.h"
 #include "NP_Conex_CC.h"
-#include <cstring>
+#include <typeinfo>
 
 namespace DynExpInstr
 {
@@ -33,6 +33,7 @@ namespace DynExpInstr
 	{
 		ExitFuncImpl(dispatch_tag<ExitTask>(), Instance);
 
+		auto InstrParams = DynExp::dynamic_Params_cast<NP_Conex_CC>(Instance.ParamsGetter()); // dynamic cast of parameters returned by Instance.ParamsGetter() to the type NP_Conex_CC
 		auto InstrData = DynExp::dynamic_InstrumentData_cast<NP_Conex_CC>(Instance.InstrumentDataGetter());
 
 		try
@@ -61,18 +62,19 @@ namespace DynExpInstr
 			try
 			{
 				// Tell position
-				*InstrData->HardwareAdapter << Util::ToStr(InstrParams->ConexAddress.Get()) + "TP"; // The output will be something like '1TP10.0000164'. The next line transforms this into the expected format.
-				InstrData->SetCurrentPosition(Util::StrToT<PositionerStageData::PositionType>(
-					NP_Conex_CC::AnswerToNumberString(InstrData->HardwareAdapter->WaitForLine(3), "TP")));
+				*InstrData->HardwareAdapter << Util::ToStr(InstrParams->ConexAddress.Get()) + "TP"; // The output will be something like '1TP10.0000164'.
+				auto PositionalAnswer = NP_Conex_CC::AnswerToNumberString(InstrData->HardwareAdapter->WaitForLine(3, std::chrono::milliseconds(250)), "TP");
+				InstrData->SetCurrentPosition(Util::StrToT<PositionerStageData::PositionType>(PositionalAnswer));
 
 				// Tell programmed velocity
-				*InstrData->HardwareAdapter << Util::ToStr(InstrParams->ConexAddress.Get()) + "VA?"; // The output will be something like '1VA10'. The next line transforms this into the expected format.
-				InstrData->SetVelocity(Util::StrToT<PositionerStageData::PositionType>(
-					NP_Conex_CC::AnswerToNumberString(InstrData->HardwareAdapter->WaitForLine(3), "VA")));
+				*InstrData->HardwareAdapter << Util::ToStr(InstrParams->ConexAddress.Get()) + "VA?"; // The output will be something like '1VA10'.
+				auto VelocityAnswer = NP_Conex_CC::AnswerToNumberString(InstrData->HardwareAdapter->WaitForLine(3, std::chrono::milliseconds(250)), "VA");
+				InstrData->SetVelocity(Util::StrToT<PositionerStageData::PositionType>(VelocityAnswer));
 
 				// Tell status
-				*InstrData->HardwareAdapter << Util::ToStr(InstrParams->ConexAddress.Get()) + "TS"; // The output will be something like '1TS000033'. The next line transforms this into the expected format.
-				std::stringstream StatusStream(NP_Conex_CC::AnswerToNumberString(InstrData->HardwareAdapter->WaitForLine(3), "TS"));
+				*InstrData->HardwareAdapter << Util::ToStr(InstrParams->ConexAddress.Get()) + "TS"; // The output will be something like '1TS000033'.
+				auto StatusAnswer = NP_Conex_CC::AnswerToNumberString(InstrData->HardwareAdapter->WaitForLine(3, std::chrono::milliseconds(250)), "TS");
+				std::stringstream StatusStream(StatusAnswer);
 				StatusStream.exceptions(std::ofstream::failbit | std::ofstream::badbit);
 				StatusStream << std::hex;
 
@@ -82,7 +84,7 @@ namespace DynExpInstr
 					throw Util::InvalidDataException("Received an unexpected Conex_CC status.");
 				InstrData->Conex_CCStatus.Set(static_cast<uint8_t>(Byte));
 
-				StatusStream.seekg(15);
+				StatusStream.seekg(15); // Q: Why does this throw an error?
 				StatusStream >> Byte;	// Extract error codes
 				if (Byte > 0xFF)
 					throw Util::InvalidDataException("Received an unexpected error code.");
@@ -241,12 +243,15 @@ namespace DynExpInstr
 	// StartCode is nnAA, nn is the controller adress, AA is the command name, e.g. "TP" for tell position
 	std::string NP_Conex_CC::AnswerToNumberString(std::string&& Answer, const char* StartCode)
 	{
-		auto Pos = Answer.find(StartCode); // Q: Why is Answer an empty string?
+		auto Pos = Answer.find(StartCode);
 
 		if (Pos == std::string::npos) 
 			throw Util::InvalidDataException("Received an unexpected answer.");
 
-		return Answer.substr(Pos + std::strlen(StartCode)); // transform, e.g. '1TP10.0000164' into '10.0000164'
+		auto TmpReturnValue = Answer.substr(Pos + 2);
+		auto TmpReturnValueType = typeid(TmpReturnValue).name();
+
+		return Answer.substr(Pos + 2);
 	}
 
 	NP_Conex_CC::NP_Conex_CC(const std::thread::id OwnerThreadID, DynExp::ParamsBasePtrType&& Params)
@@ -256,11 +261,11 @@ namespace DynExpInstr
 
 	void NP_Conex_CC::OnErrorChild() const
 	{
-		auto InstrParams = DynExp::dynamic_Params_cast<NP_Conex_CC>(Instance.ParamsGetter());
+		// auto InstrParams = DynExp::dynamic_Params_cast<NP_Conex_CC>(Instance.ParamsGetter()); this needs Instance as an input
 		auto InstrData = DynExp::dynamic_InstrumentData_cast<NP_Conex_CC>(GetInstrumentData());
 
 		// Abort motion.
-		*InstrData->HardwareAdapter << Util::ToStr(InstrParams->ConexAddress.Get()) + "ST";
+		*InstrData->HardwareAdapter << "ST"; // Util::ToStr(InstrParams->ConexAddress.Get()) + 
 	}
 
 	void NP_Conex_CC::ResetImpl(dispatch_tag<PositionerStage>)
