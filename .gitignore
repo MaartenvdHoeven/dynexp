@@ -17,6 +17,7 @@ doc/**/
 CMakeUserPresets.json
 CMakeCache.txt
 CMakeFiles/
+CMakeSettings.json
 
 ## Temporary files
 *.swp
