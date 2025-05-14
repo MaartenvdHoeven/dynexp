@@ -1,7 +1,7 @@
 // This file is part of DynExp.
 
 /**
- * @file QutoolsQuTAG.h
+ * @file QutoolsQuTAGStandard.h
  * @brief Implementation of an instrument to control a single input of the qutools TDC
  * time tagger.
 */
@@ -10,17 +10,17 @@
 
 #include "stdafx.h"
 #include "DynExpCore.h"
-#include "HardwareAdapters/HardwareAdapterQutoolsTDC.h"
+#include "HardwareAdapters/HardwareAdapterQutoolsStandardTDC.h"
 #include "MetaInstruments/TimeTagger.h"
 
 namespace DynExpInstr
 {
-	class QutoolsQuTAG;
-	class QutoolsQuTAGData;
+	class QutoolsQuTAGStandard;
+	class QutoolsQuTAGStandardData;
 
-	namespace QutoolsQuTAGTasks
+	namespace QutoolsQuTAGStandardTasks
 	{
-		void UpdateStreamMode(Util::SynchronizedPointer<QutoolsQuTAGData>& InstrData);
+		void UpdateStreamMode(Util::SynchronizedPointer<QutoolsQuTAGStandardData>& InstrData);
 
 		class InitTask : public TimeTaggerTasks::InitTask
 		{
@@ -149,68 +149,68 @@ namespace DynExpInstr
 		};
 	}
 
-	class QutoolsQuTAGData : public TimeTaggerData
+	class QutoolsQuTAGStandardData : public TimeTaggerData
 	{
 	public:
-		QutoolsQuTAGData() : Channel(0) {}
-		virtual ~QutoolsQuTAGData() = default;
+		QutoolsQuTAGStandardData() : Channel(0) {}
+		virtual ~QutoolsQuTAGStandardData() = default;
 
-		DynExp::LinkedObjectWrapperContainer<DynExpHardware::QutoolsTDCHardwareAdapter> HardwareAdapter;
+		DynExp::LinkedObjectWrapperContainer<DynExpHardware::QutoolsStandardTDCHardwareAdapter> HardwareAdapter;
 
 		auto GetChannel() const noexcept { return Channel; }
-		void SetChannel(DynExpHardware::QutoolsTDCHardwareAdapter::ChannelType Channel) noexcept { this->Channel = Channel; }
+		void SetChannel(DynExpHardware::QutoolsStandardTDCHardwareAdapter::ChannelType Channel) noexcept { this->Channel = Channel; }
 
 	private:
 		void ResetImpl(dispatch_tag<TimeTaggerData>) override final;
-		virtual void ResetImpl(dispatch_tag<QutoolsQuTAGData>) {};
+		virtual void ResetImpl(dispatch_tag<QutoolsQuTAGStandardData>) {};
 
-		DynExpHardware::QutoolsTDCHardwareAdapter::ChannelType Channel;
+		DynExpHardware::QutoolsStandardTDCHardwareAdapter::ChannelType Channel;
 	};
 
-	class QutoolsQuTAGParams : public TimeTaggerParams
+	class QutoolsQuTAGStandardParams : public TimeTaggerParams
 	{
 	public:
-		QutoolsQuTAGParams(DynExp::ItemIDType ID, const DynExp::DynExpCore& Core) : TimeTaggerParams(ID, Core) {}
-		virtual ~QutoolsQuTAGParams() = default;
+		QutoolsQuTAGStandardParams(DynExp::ItemIDType ID, const DynExp::DynExpCore& Core) : TimeTaggerParams(ID, Core) {}
+		virtual ~QutoolsQuTAGStandardParams() = default;
 
-		virtual const char* GetParamClassTag() const noexcept override { return "QutoolsQuTAGParams"; }
+		virtual const char* GetParamClassTag() const noexcept override { return "QutoolsQuTAGStandardParams"; }
 
-		Param<DynExp::ObjectLink<DynExpHardware::QutoolsTDCHardwareAdapter>> HardwareAdapter = { *this, GetCore().GetHardwareAdapterManager(),
+		Param<DynExp::ObjectLink<DynExpHardware::QutoolsStandardTDCHardwareAdapter>> HardwareAdapter = { *this, GetCore().GetHardwareAdapterManager(),
 			"HardwareAdapter", "qutools TDC device", "Underlying hardware adapter of this instrument", DynExpUI::Icons::HardwareAdapter };
 		Param<ParamsConfigDialog::NumberType> Channel = { *this, "Channel", "Channel",
-			"Channel of the quTAG device this instrument refers to", true, 0, 0, std::numeric_limits<DynExpHardware::QutoolsTDCHardwareAdapter::ChannelType>::max(), 1, 0 };
+			"Channel of the quTAG device this instrument refers to", true, 0, 0, std::numeric_limits<DynExpHardware::QutoolsStandardTDCHardwareAdapter::ChannelType>::max(), 1, 0 };
 		Param<ParamsConfigDialog::NumberType> CrossCorrChannel = { *this, "CrossCorrChannel", "Correlation channel",
-			"Channel of the quTAG device to compute correlations (e.g. g(2)) with", false, 1, 0, std::numeric_limits<DynExpHardware::QutoolsTDCHardwareAdapter::ChannelType>::max(), 1, 0 };
+			"Channel of the quTAG device to compute correlations (e.g. g(2)) with", false, 1, 0, std::numeric_limits<DynExpHardware::QutoolsStandardTDCHardwareAdapter::ChannelType>::max(), 1, 0 };
 
 	private:
-		void ConfigureParamsImpl(dispatch_tag<TimeTaggerParams>) override final { ConfigureParamsImpl(dispatch_tag<QutoolsQuTAGParams>()); }
-		virtual void ConfigureParamsImpl(dispatch_tag<QutoolsQuTAGParams>) {}
+		void ConfigureParamsImpl(dispatch_tag<TimeTaggerParams>) override final { ConfigureParamsImpl(dispatch_tag<QutoolsQuTAGStandardParams>()); }
+		virtual void ConfigureParamsImpl(dispatch_tag<QutoolsQuTAGStandardParams>) {}
 	};
 
-	class QutoolsQuTAGConfigurator : public TimeTaggerConfigurator
+	class QutoolsQuTAGStandardConfigurator : public TimeTaggerConfigurator
 	{
 	public:
-		using ObjectType = QutoolsQuTAG;
-		using ParamsType = QutoolsQuTAGParams;
+		using ObjectType = QutoolsQuTAGStandard;
+		using ParamsType = QutoolsQuTAGStandardParams;
 
-		QutoolsQuTAGConfigurator() = default;
-		virtual ~QutoolsQuTAGConfigurator() = default;
+		QutoolsQuTAGStandardConfigurator() = default;
+		virtual ~QutoolsQuTAGStandardConfigurator() = default;
 
 	private:
-		virtual DynExp::ParamsBasePtrType MakeParams(DynExp::ItemIDType ID, const DynExp::DynExpCore& Core) const override { return DynExp::MakeParams<QutoolsQuTAGConfigurator>(ID, Core); }
+		virtual DynExp::ParamsBasePtrType MakeParams(DynExp::ItemIDType ID, const DynExp::DynExpCore& Core) const override { return DynExp::MakeParams<QutoolsQuTAGStandardConfigurator>(ID, Core); }
 	};
 
-	class QutoolsQuTAG : public TimeTagger
+	class QutoolsQuTAGStandard : public TimeTagger
 	{
 	public:
-		using ParamsType = QutoolsQuTAGParams;
-		using ConfigType = QutoolsQuTAGConfigurator;
-		using InstrumentDataType = QutoolsQuTAGData;
+		using ParamsType = QutoolsQuTAGStandardParams;
+		using ConfigType = QutoolsQuTAGStandardConfigurator;
+		using InstrumentDataType = QutoolsQuTAGStandardData;
 
 		constexpr static auto Name() noexcept { return "qutools quTAG"; }
 
-		QutoolsQuTAG(const std::thread::id OwnerThreadID, DynExp::ParamsBasePtrType&& Params);
-		virtual ~QutoolsQuTAG() {}
+		QutoolsQuTAGStandard(const std::thread::id OwnerThreadID, DynExp::ParamsBasePtrType&& Params);
+		virtual ~QutoolsQuTAGStandard() {}
 
 		virtual std::string GetName() const override { return Name(); }
 
@@ -220,23 +220,23 @@ namespace DynExpInstr
 		virtual Util::picoseconds GetResolution() const override;
 		virtual size_t GetBufferSize() const override;
 
-		virtual void ReadData(DynExp::TaskBase::CallbackType CallbackFunc = nullptr) const override { MakeAndEnqueueTask<QutoolsQuTAGTasks::ReadDataTask>(CallbackFunc); }
-		virtual void SetStreamSize(size_t BufferSizeInSamples, DynExp::TaskBase::CallbackType CallbackFunc = nullptr) const override { MakeAndEnqueueTask<QutoolsQuTAGTasks::SetStreamSizeTask>(BufferSizeInSamples, CallbackFunc); }
-		virtual void Clear(DynExp::TaskBase::CallbackType CallbackFunc = nullptr) const override { MakeAndEnqueueTask<QutoolsQuTAGTasks::ClearTask>(CallbackFunc); }
-		virtual void ConfigureInput(bool UseRisingEdge, double ThresholdInVolts, DynExp::TaskBase::CallbackType CallbackFunc = nullptr) const override { MakeAndEnqueueTask<QutoolsQuTAGTasks::ConfigureInputTask>(UseRisingEdge, ThresholdInVolts, CallbackFunc); }
-		virtual void SetExposureTime(Util::picoseconds ExposureTime, DynExp::TaskBase::CallbackType CallbackFunc = nullptr) const override { MakeAndEnqueueTask<QutoolsQuTAGTasks::SetExposureTimeTask>(ExposureTime, CallbackFunc); }
-		virtual void SetCoincidenceWindow(Util::picoseconds CoincidenceWindow, DynExp::TaskBase::CallbackType CallbackFunc = nullptr) const override { MakeAndEnqueueTask<QutoolsQuTAGTasks::SetCoincidenceWindowTask>(CoincidenceWindow, CallbackFunc); }
-		virtual void SetDelay(Util::picoseconds Delay, DynExp::TaskBase::CallbackType CallbackFunc = nullptr) const override { MakeAndEnqueueTask<QutoolsQuTAGTasks::SetDelayTask>(Delay, CallbackFunc); }
-		virtual void SetHBTActive(bool Enable, DynExp::TaskBase::CallbackType CallbackFunc = nullptr) const override { MakeAndEnqueueTask<QutoolsQuTAGTasks::SetHBTActiveTask>(Enable, CallbackFunc); }
-		virtual void ConfigureHBT(Util::picoseconds BinWidth, size_t BinCount, DynExp::TaskBase::CallbackType CallbackFunc = nullptr) const override { MakeAndEnqueueTask<QutoolsQuTAGTasks::ConfigureHBTTask>(BinWidth, BinCount, CallbackFunc); }
-		virtual void ResetHBT(DynExp::TaskBase::CallbackType CallbackFunc = nullptr) const override { MakeAndEnqueueTask<QutoolsQuTAGTasks::ResetHBTTask>(CallbackFunc); }
+		virtual void ReadData(DynExp::TaskBase::CallbackType CallbackFunc = nullptr) const override { MakeAndEnqueueTask<QutoolsQuTAGStandardTasks::ReadDataTask>(CallbackFunc); }
+		virtual void SetStreamSize(size_t BufferSizeInSamples, DynExp::TaskBase::CallbackType CallbackFunc = nullptr) const override { MakeAndEnqueueTask<QutoolsQuTAGStandardTasks::SetStreamSizeTask>(BufferSizeInSamples, CallbackFunc); }
+		virtual void Clear(DynExp::TaskBase::CallbackType CallbackFunc = nullptr) const override { MakeAndEnqueueTask<QutoolsQuTAGStandardTasks::ClearTask>(CallbackFunc); }
+		virtual void ConfigureInput(bool UseRisingEdge, double ThresholdInVolts, DynExp::TaskBase::CallbackType CallbackFunc = nullptr) const override { MakeAndEnqueueTask<QutoolsQuTAGStandardTasks::ConfigureInputTask>(UseRisingEdge, ThresholdInVolts, CallbackFunc); }
+		virtual void SetExposureTime(Util::picoseconds ExposureTime, DynExp::TaskBase::CallbackType CallbackFunc = nullptr) const override { MakeAndEnqueueTask<QutoolsQuTAGStandardTasks::SetExposureTimeTask>(ExposureTime, CallbackFunc); }
+		virtual void SetCoincidenceWindow(Util::picoseconds CoincidenceWindow, DynExp::TaskBase::CallbackType CallbackFunc = nullptr) const override { MakeAndEnqueueTask<QutoolsQuTAGStandardTasks::SetCoincidenceWindowTask>(CoincidenceWindow, CallbackFunc); }
+		virtual void SetDelay(Util::picoseconds Delay, DynExp::TaskBase::CallbackType CallbackFunc = nullptr) const override { MakeAndEnqueueTask<QutoolsQuTAGStandardTasks::SetDelayTask>(Delay, CallbackFunc); }
+		virtual void SetHBTActive(bool Enable, DynExp::TaskBase::CallbackType CallbackFunc = nullptr) const override { MakeAndEnqueueTask<QutoolsQuTAGStandardTasks::SetHBTActiveTask>(Enable, CallbackFunc); }
+		virtual void ConfigureHBT(Util::picoseconds BinWidth, size_t BinCount, DynExp::TaskBase::CallbackType CallbackFunc = nullptr) const override { MakeAndEnqueueTask<QutoolsQuTAGStandardTasks::ConfigureHBTTask>(BinWidth, BinCount, CallbackFunc); }
+		virtual void ResetHBT(DynExp::TaskBase::CallbackType CallbackFunc = nullptr) const override { MakeAndEnqueueTask<QutoolsQuTAGStandardTasks::ResetHBTTask>(CallbackFunc); }
 
 	private:
 		void ResetImpl(dispatch_tag<TimeTagger>) override final;
-		virtual void ResetImpl(dispatch_tag<QutoolsQuTAG>) {}
+		virtual void ResetImpl(dispatch_tag<QutoolsQuTAGStandard>) {}
 
-		virtual std::unique_ptr<DynExp::InitTaskBase> MakeInitTask() const override { return DynExp::MakeTask<QutoolsQuTAGTasks::InitTask>(); }
-		virtual std::unique_ptr<DynExp::ExitTaskBase> MakeExitTask() const override { return DynExp::MakeTask<QutoolsQuTAGTasks::ExitTask>(); }
-		virtual std::unique_ptr<DynExp::UpdateTaskBase> MakeUpdateTask() const override { return DynExp::MakeTask<QutoolsQuTAGTasks::UpdateTask>(); }
+		virtual std::unique_ptr<DynExp::InitTaskBase> MakeInitTask() const override { return DynExp::MakeTask<QutoolsQuTAGStandardTasks::InitTask>(); }
+		virtual std::unique_ptr<DynExp::ExitTaskBase> MakeExitTask() const override { return DynExp::MakeTask<QutoolsQuTAGStandardTasks::ExitTask>(); }
+		virtual std::unique_ptr<DynExp::UpdateTaskBase> MakeUpdateTask() const override { return DynExp::MakeTask<QutoolsQuTAGStandardTasks::UpdateTask>(); }
 	};
 }

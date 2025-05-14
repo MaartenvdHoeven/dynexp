@@ -1,11 +1,11 @@
 // This file is part of DynExp.
 
 #include "stdafx.h"
-#include "QutoolsQuTAG.h"
+#include "QutoolsQuTAGStandard.h"
 
 namespace DynExpInstr
 {
-	void QutoolsQuTAGTasks::UpdateStreamMode(Util::SynchronizedPointer<QutoolsQuTAGData>& InstrData)
+	void QutoolsQuTAGStandardTasks::UpdateStreamMode(Util::SynchronizedPointer<QutoolsQuTAGStandardData>& InstrData)
 	{
 		// In case one is only interested in the counts per exposure time window, there is no need to transfer all
 		// single count events to the computer. So, mute the channel in that case.
@@ -17,10 +17,10 @@ namespace DynExpInstr
 		InstrData->ClearStreamModeChanged();
 	}
 
-	void QutoolsQuTAGTasks::InitTask::InitFuncImpl(dispatch_tag<TimeTaggerTasks::InitTask>, DynExp::InstrumentInstance& Instance)
+	void QutoolsQuTAGStandardTasks::InitTask::InitFuncImpl(dispatch_tag<TimeTaggerTasks::InitTask>, DynExp::InstrumentInstance& Instance)
 	{
-		auto InstrParams = DynExp::dynamic_Params_cast<QutoolsQuTAG>(Instance.ParamsGetter());
-		auto InstrData = DynExp::dynamic_InstrumentData_cast<QutoolsQuTAG>(Instance.InstrumentDataGetter());
+		auto InstrParams = DynExp::dynamic_Params_cast<QutoolsQuTAGStandard>(Instance.ParamsGetter());
+		auto InstrData = DynExp::dynamic_InstrumentData_cast<QutoolsQuTAGStandard>(Instance.InstrumentDataGetter());
 
 		InstrData->SetChannel(InstrParams->Channel);
 
@@ -31,20 +31,20 @@ namespace DynExpInstr
 		InitFuncImpl(dispatch_tag<InitTask>(), Instance);
 	}
 
-	void QutoolsQuTAGTasks::ExitTask::ExitFuncImpl(dispatch_tag<TimeTaggerTasks::ExitTask>, DynExp::InstrumentInstance& Instance)
+	void QutoolsQuTAGStandardTasks::ExitTask::ExitFuncImpl(dispatch_tag<TimeTaggerTasks::ExitTask>, DynExp::InstrumentInstance& Instance)
 	{
 		ExitFuncImpl(dispatch_tag<ExitTask>(), Instance);
 
-		auto InstrData = DynExp::dynamic_InstrumentData_cast<QutoolsQuTAG>(Instance.InstrumentDataGetter());
+		auto InstrData = DynExp::dynamic_InstrumentData_cast<QutoolsQuTAGStandard>(Instance.InstrumentDataGetter());
 
 		InstrData->HardwareAdapter->DisableChannel(InstrData->GetChannel());
 		Instance.UnlockObject(InstrData->HardwareAdapter);
 	}
 
-	void QutoolsQuTAGTasks::UpdateTask::UpdateFuncImpl(dispatch_tag<TimeTaggerTasks::UpdateTask>, DynExp::InstrumentInstance& Instance)
+	void QutoolsQuTAGStandardTasks::UpdateTask::UpdateFuncImpl(dispatch_tag<TimeTaggerTasks::UpdateTask>, DynExp::InstrumentInstance& Instance)
 	{
 		{
-			auto InstrData = DynExp::dynamic_InstrumentData_cast<QutoolsQuTAG>(Instance.InstrumentDataGetter());
+			auto InstrData = DynExp::dynamic_InstrumentData_cast<QutoolsQuTAGStandard>(Instance.InstrumentDataGetter());
 
 			if (InstrData->GetStreamModeChanged())
 				UpdateStreamMode(InstrData);
@@ -53,9 +53,9 @@ namespace DynExpInstr
 		UpdateFuncImpl(dispatch_tag<UpdateTask>(), Instance);
 	}
 
-	DynExp::TaskResultType QutoolsQuTAGTasks::ReadDataTask::RunChild(DynExp::InstrumentInstance& Instance)
+	DynExp::TaskResultType QutoolsQuTAGStandardTasks::ReadDataTask::RunChild(DynExp::InstrumentInstance& Instance)
 	{
-		auto InstrData = DynExp::dynamic_InstrumentData_cast<QutoolsQuTAG>(Instance.InstrumentDataGetter());
+		auto InstrData = DynExp::dynamic_InstrumentData_cast<QutoolsQuTAGStandard>(Instance.InstrumentDataGetter());
 		auto SampleStream = InstrData->GetCastSampleStream<TimeTaggerData::SampleStreamType>();
 
 		if (InstrData->GetStreamMode() == TimeTaggerData::StreamModeType::Counts)
@@ -77,9 +77,9 @@ namespace DynExpInstr
 		return {};
 	}
 
-	DynExp::TaskResultType QutoolsQuTAGTasks::SetStreamSizeTask::RunChild(DynExp::InstrumentInstance& Instance)
+	DynExp::TaskResultType QutoolsQuTAGStandardTasks::SetStreamSizeTask::RunChild(DynExp::InstrumentInstance& Instance)
 	{
-		auto InstrData = DynExp::dynamic_InstrumentData_cast<QutoolsQuTAG>(Instance.InstrumentDataGetter());
+		auto InstrData = DynExp::dynamic_InstrumentData_cast<QutoolsQuTAGStandard>(Instance.InstrumentDataGetter());
 
 		InstrData->HardwareAdapter->SetTimestampBufferSize(Util::NumToT<DynExpHardware::QutoolsTDCSyms::Int32>(BufferSizeInSamples));
 		InstrData->GetSampleStream()->SetStreamSize(BufferSizeInSamples);
@@ -87,55 +87,55 @@ namespace DynExpInstr
 		return {};
 	}
 
-	DynExp::TaskResultType QutoolsQuTAGTasks::ClearTask::RunChild(DynExp::InstrumentInstance& Instance)
+	DynExp::TaskResultType QutoolsQuTAGStandardTasks::ClearTask::RunChild(DynExp::InstrumentInstance& Instance)
 	{
-		auto InstrData = DynExp::dynamic_InstrumentData_cast<QutoolsQuTAG>(Instance.InstrumentDataGetter());
+		auto InstrData = DynExp::dynamic_InstrumentData_cast<QutoolsQuTAGStandard>(Instance.InstrumentDataGetter());
 
 		InstrData->HardwareAdapter->ClearTimestamps(InstrData->GetChannel());
 
 		return {};
 	}
 
-	DynExp::TaskResultType QutoolsQuTAGTasks::ConfigureInputTask::RunChild(DynExp::InstrumentInstance& Instance)
+	DynExp::TaskResultType QutoolsQuTAGStandardTasks::ConfigureInputTask::RunChild(DynExp::InstrumentInstance& Instance)
 	{
-		auto InstrData = DynExp::dynamic_InstrumentData_cast<QutoolsQuTAG>(Instance.InstrumentDataGetter());
+		auto InstrData = DynExp::dynamic_InstrumentData_cast<QutoolsQuTAGStandard>(Instance.InstrumentDataGetter());
 
 		InstrData->HardwareAdapter->ConfigureSignalConditioning(InstrData->GetChannel(), DynExpHardware::QutoolsTDCSyms::SCOND_MISC, UseRisingEdge, ThresholdInVolts);
 
 		return {};
 	}
 
-	DynExp::TaskResultType QutoolsQuTAGTasks::SetExposureTimeTask::RunChild(DynExp::InstrumentInstance& Instance)
+	DynExp::TaskResultType QutoolsQuTAGStandardTasks::SetExposureTimeTask::RunChild(DynExp::InstrumentInstance& Instance)
 	{
-		auto InstrData = DynExp::dynamic_InstrumentData_cast<QutoolsQuTAG>(Instance.InstrumentDataGetter());
+		auto InstrData = DynExp::dynamic_InstrumentData_cast<QutoolsQuTAGStandard>(Instance.InstrumentDataGetter());
 
 		InstrData->HardwareAdapter->SetExposureTime(std::chrono::duration_cast<std::chrono::milliseconds>(ExposureTime));
 
 		return {};
 	}
 
-	DynExp::TaskResultType QutoolsQuTAGTasks::SetCoincidenceWindowTask::RunChild(DynExp::InstrumentInstance& Instance)
+	DynExp::TaskResultType QutoolsQuTAGStandardTasks::SetCoincidenceWindowTask::RunChild(DynExp::InstrumentInstance& Instance)
 	{
-		auto InstrData = DynExp::dynamic_InstrumentData_cast<QutoolsQuTAG>(Instance.InstrumentDataGetter());
+		auto InstrData = DynExp::dynamic_InstrumentData_cast<QutoolsQuTAGStandard>(Instance.InstrumentDataGetter());
 
 		InstrData->HardwareAdapter->SetCoincidenceWindow(CoincidenceWindow);
 
 		return {};
 	}
 
-	DynExp::TaskResultType QutoolsQuTAGTasks::SetDelayTask::RunChild(DynExp::InstrumentInstance& Instance)
+	DynExp::TaskResultType QutoolsQuTAGStandardTasks::SetDelayTask::RunChild(DynExp::InstrumentInstance& Instance)
 	{
-		auto InstrData = DynExp::dynamic_InstrumentData_cast<QutoolsQuTAG>(Instance.InstrumentDataGetter());
+		auto InstrData = DynExp::dynamic_InstrumentData_cast<QutoolsQuTAGStandard>(Instance.InstrumentDataGetter());
 
 		InstrData->HardwareAdapter->SetChannelDelay(InstrData->GetChannel(), Delay);
 
 		return {};
 	}
 
-	DynExp::TaskResultType QutoolsQuTAGTasks::SetHBTActiveTask::RunChild(DynExp::InstrumentInstance& Instance)
+	DynExp::TaskResultType QutoolsQuTAGStandardTasks::SetHBTActiveTask::RunChild(DynExp::InstrumentInstance& Instance)
 	{
-		auto InstrParams = DynExp::dynamic_Params_cast<QutoolsQuTAG>(Instance.ParamsGetter());
-		auto InstrData = DynExp::dynamic_InstrumentData_cast<QutoolsQuTAG>(Instance.InstrumentDataGetter());
+		auto InstrParams = DynExp::dynamic_Params_cast<QutoolsQuTAGStandard>(Instance.ParamsGetter());
+		auto InstrData = DynExp::dynamic_InstrumentData_cast<QutoolsQuTAGStandard>(Instance.InstrumentDataGetter());
 
 		InstrData->HardwareAdapter->EnableHBT(Enable);
 		InstrData->GetHBTResults().Enabled = Enable;
@@ -155,9 +155,9 @@ namespace DynExpInstr
 		return {};
 	}
 
-	DynExp::TaskResultType QutoolsQuTAGTasks::ConfigureHBTTask::RunChild(DynExp::InstrumentInstance& Instance)
+	DynExp::TaskResultType QutoolsQuTAGStandardTasks::ConfigureHBTTask::RunChild(DynExp::InstrumentInstance& Instance)
 	{
-		auto InstrData = DynExp::dynamic_InstrumentData_cast<QutoolsQuTAG>(Instance.InstrumentDataGetter());
+		auto InstrData = DynExp::dynamic_InstrumentData_cast<QutoolsQuTAGStandard>(Instance.InstrumentDataGetter());
 
 		if (BinWidth / InstrData->HardwareAdapter->GetTimebase() < 1 || BinWidth / InstrData->HardwareAdapter->GetTimebase() > 1e6)
 			throw Util::OutOfRangeException("The bin width exceeds the allowed range (see tdchbt.h's reference).");
@@ -169,9 +169,9 @@ namespace DynExpInstr
 		return {};
 	}
 
-	DynExp::TaskResultType QutoolsQuTAGTasks::ResetHBTTask::RunChild(DynExp::InstrumentInstance& Instance)
+	DynExp::TaskResultType QutoolsQuTAGStandardTasks::ResetHBTTask::RunChild(DynExp::InstrumentInstance& Instance)
 	{
-		auto InstrData = DynExp::dynamic_InstrumentData_cast<QutoolsQuTAG>(Instance.InstrumentDataGetter());
+		auto InstrData = DynExp::dynamic_InstrumentData_cast<QutoolsQuTAGStandard>(Instance.InstrumentDataGetter());
 
 		if (InstrData->GetHBTResults().Enabled)
 			InstrData->HardwareAdapter->ResetHBT();
@@ -179,34 +179,34 @@ namespace DynExpInstr
 		return {};
 	}
 
-	void QutoolsQuTAGData::ResetImpl(dispatch_tag<TimeTaggerData>)
+	void QutoolsQuTAGStandardData::ResetImpl(dispatch_tag<TimeTaggerData>)
 	{
 		Channel = 0;
 
-		ResetImpl(dispatch_tag<QutoolsQuTAGData>());
+		ResetImpl(dispatch_tag<QutoolsQuTAGStandardData>());
 	}
 
-	QutoolsQuTAG::QutoolsQuTAG(const std::thread::id OwnerThreadID, DynExp::ParamsBasePtrType&& Params)
+	QutoolsQuTAGStandard::QutoolsQuTAGStandard(const std::thread::id OwnerThreadID, DynExp::ParamsBasePtrType&& Params)
 		: TimeTagger(OwnerThreadID, std::move(Params))
 	{
 	}
 
-	Util::picoseconds QutoolsQuTAG::GetResolution() const
+	Util::picoseconds QutoolsQuTAGStandard::GetResolution() const
 	{
-		auto InstrData = DynExp::dynamic_InstrumentData_cast<QutoolsQuTAG>(GetInstrumentData());
+		auto InstrData = DynExp::dynamic_InstrumentData_cast<QutoolsQuTAGStandard>(GetInstrumentData());
 
 		return InstrData->HardwareAdapter->GetTimebase();
 	}
 
-	size_t QutoolsQuTAG::GetBufferSize() const
+	size_t QutoolsQuTAGStandard::GetBufferSize() const
 	{
-		auto InstrData = DynExp::dynamic_InstrumentData_cast<QutoolsQuTAG>(GetInstrumentData());
+		auto InstrData = DynExp::dynamic_InstrumentData_cast<QutoolsQuTAGStandard>(GetInstrumentData());
 
 		return InstrData->HardwareAdapter->GetBufferSize();
 	}
 
-	void QutoolsQuTAG::ResetImpl(dispatch_tag<TimeTagger>)
+	void QutoolsQuTAGStandard::ResetImpl(dispatch_tag<TimeTagger>)
 	{
-		ResetImpl(dispatch_tag<QutoolsQuTAG>());
+		ResetImpl(dispatch_tag<QutoolsQuTAGStandard>());
 	}
 }

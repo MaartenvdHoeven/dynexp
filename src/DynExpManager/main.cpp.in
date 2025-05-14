@@ -33,6 +33,7 @@
 #cmakedefine USE_NIDAQ
 #cmakedefine USE_PVCAM
 #cmakedefine USE_QUTOOLSQUTAG
+#cmakedefine USE_QUTOOLSQUTAGSTANDARD
 #cmakedefine USE_SMARACT
 #cmakedefine USE_SWABIANPULSESTREAMER
 #cmakedefine USE_ZIMFLI
@@ -171,7 +172,7 @@ int main(int argc, char *argv[])
 		,DynExpInstr::QutoolsQuTAG
 #endif // USE_QUTOOLSQUTAG
 #ifdef USE_QUTOOLSQUTAGSTANDARD
-		,DynExpInstr::QutoolsStandardQuTAG
+		,DynExpInstr::QutoolsQuTAGStandard
 #endif // USE_QUTOOLSQUTAGSTANDARD
 #ifdef USE_SMARACT
 		,DynExpInstr::SmarAct

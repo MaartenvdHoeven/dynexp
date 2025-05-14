@@ -1,13 +1,13 @@
 // This file is part of DynExp.
 
 #include "stdafx.h"
-#include "HardwareAdapterQutoolsTDC.h"
+#include "HardwareAdapterQutoolsStandardTDC.h"
 
 namespace DynExpHardware
 {
 	// Returns the serial numbers of all available qutool TDC devices as a std::vector
 	// sorted by device number in ascending order.
-	auto QutoolsTDCHardwareAdapter::Enumerate()
+	auto QutoolsStandardTDCHardwareAdapter::Enumerate()
 	{
 		unsigned int DeviceCount{};
 		auto Result = QutoolsTDCSyms::TDC_discover(&DeviceCount);
@@ -31,7 +31,7 @@ namespace DynExpHardware
 		return DeviceDescriptors;
 	}
 
-	Util::TextValueListType<QutoolsTDCHardwareAdapterParams::EdgeType> QutoolsTDCHardwareAdapterParams::EdgeTypeStrList()
+	Util::TextValueListType<QutoolsStandardTDCHardwareAdapterParams::EdgeType> QutoolsStandardTDCHardwareAdapterParams::EdgeTypeStrList()
 	{
 		Util::TextValueListType<EdgeType> List = {
 			{ "Trigger on rising edge.", EdgeType::RisingEdge },
@@ -41,9 +41,9 @@ namespace DynExpHardware
 		return List;
 	}
 
-	void QutoolsTDCHardwareAdapterParams::ConfigureParamsImpl(dispatch_tag<HardwareAdapterParamsBase>)
+	void QutoolsStandardTDCHardwareAdapterParams::ConfigureParamsImpl(dispatch_tag<HardwareAdapterParamsBase>)
 	{
-		auto QutoolsTDCDevices = QutoolsTDCHardwareAdapter::Enumerate();
+		auto QutoolsTDCDevices = QutoolsStandardTDCHardwareAdapter::Enumerate();
 		if (!DeviceDescriptor.Get().empty() &&
 			std::find(QutoolsTDCDevices.cbegin(), QutoolsTDCDevices.cend(), DeviceDescriptor) == std::cend(QutoolsTDCDevices))
 			QutoolsTDCDevices.push_back(DeviceDescriptor);
@@ -51,41 +51,41 @@ namespace DynExpHardware
 			throw Util::EmptyException("There is not any available qutools TDC device.");
 		DeviceDescriptor.SetTextList(std::move(QutoolsTDCDevices));
 
-		ConfigureParamsImpl(dispatch_tag<QutoolsTDCHardwareAdapterParams>());
+		ConfigureParamsImpl(dispatch_tag<QutoolsStandardTDCHardwareAdapterParams>());
 	}
 
-	QutoolsTDCHardwareAdapter::QutoolsTDCSynchronizer::LockType QutoolsTDCHardwareAdapter::QutoolsTDCSynchronizer::Lock(
+	QutoolsStandardTDCHardwareAdapter::QutoolsTDCSynchronizer::LockType QutoolsStandardTDCHardwareAdapter::QutoolsTDCSynchronizer::Lock(
 		const std::chrono::milliseconds Timeout)
 	{
 		return GetInstance().AcquireLock(Timeout);
 	}
 
-	QutoolsTDCHardwareAdapter::QutoolsTDCSynchronizer& QutoolsTDCHardwareAdapter::QutoolsTDCSynchronizer::GetInstance() noexcept
+	QutoolsStandardTDCHardwareAdapter::QutoolsTDCSynchronizer& QutoolsStandardTDCHardwareAdapter::QutoolsTDCSynchronizer::GetInstance() noexcept
 	{
 		static QutoolsTDCSynchronizer Instance;
 
 		return Instance;
 	}
 
-	QutoolsTDCHardwareAdapter::CoincidenceDataType::CoincidenceDataType(CountsType&& Counts, QutoolsTDCSyms::Int32 NumUpdates)
+	QutoolsStandardTDCHardwareAdapter::CoincidenceDataType::CoincidenceDataType(CountsType&& Counts, QutoolsTDCSyms::Int32 NumUpdates)
 		: Counts(std::move(Counts)), NumUpdates(NumUpdates)
 	{
 		HasBeenRead.resize(this->Counts.size(), false);
 	}
 
-	QutoolsTDCHardwareAdapter::QutoolsTDCHardwareAdapter(const std::thread::id OwnerThreadID, DynExp::ParamsBasePtrType&& Params)
+	QutoolsStandardTDCHardwareAdapter::QutoolsStandardTDCHardwareAdapter(const std::thread::id OwnerThreadID, DynExp::ParamsBasePtrType&& Params)
 		: HardwareAdapterBase(OwnerThreadID, std::move(Params))
 	{
 		Init();
 	}
 
-	QutoolsTDCHardwareAdapter::~QutoolsTDCHardwareAdapter()
+	QutoolsStandardTDCHardwareAdapter::~QutoolsStandardTDCHardwareAdapter()
 	{
 		// Not locking, since the object is being destroyed. This should be inherently thread-safe.
 		CloseUnsafe();
 	}
 
-	void QutoolsTDCHardwareAdapter::EnableChannels(bool EnableStartChannel, QutoolsTDCSyms::Int32 ChannelMask) const
+	void QutoolsStandardTDCHardwareAdapter::EnableChannels(bool EnableStartChannel, QutoolsTDCSyms::Int32 ChannelMask) const
 	{
 		auto TDCLock = QutoolsTDCSynchronizer::Lock();
 		AddressThisTDCDeviceUnsafe();
@@ -93,7 +93,7 @@ namespace DynExpHardware
 		EnableChannelsUnsafe(EnableStartChannel, ChannelMask);
 	}
 
-	void QutoolsTDCHardwareAdapter::EnableChannel(ChannelType Channel) const
+	void QutoolsStandardTDCHardwareAdapter::EnableChannel(ChannelType Channel) const
 	{
 		auto TDCLock = QutoolsTDCSynchronizer::Lock();
 		AddressThisTDCDeviceUnsafe();
@@ -106,7 +106,7 @@ namespace DynExpHardware
 		EnableChannelsUnsafe(CurrentState.first, CurrentState.second | (1 << Channel));
 	}
 
-	void QutoolsTDCHardwareAdapter::DisableChannel(ChannelType Channel) const
+	void QutoolsStandardTDCHardwareAdapter::DisableChannel(ChannelType Channel) const
 	{
 		auto TDCLock = QutoolsTDCSynchronizer::Lock();
 		AddressThisTDCDeviceUnsafe();
@@ -119,7 +119,7 @@ namespace DynExpHardware
 		EnableChannelsUnsafe(CurrentState.first, CurrentState.second & ~(1 << Channel));
 	}
 
-	void QutoolsTDCHardwareAdapter::SetExposureTime(std::chrono::milliseconds ExposureTime) const
+	void QutoolsStandardTDCHardwareAdapter::SetExposureTime(std::chrono::milliseconds ExposureTime) const
 	{
 		auto TDCLock = QutoolsTDCSynchronizer::Lock();
 		AddressThisTDCDeviceUnsafe();
@@ -127,7 +127,7 @@ namespace DynExpHardware
 		SetExposureTimeUnsafe(ExposureTime);
 	}
 
-	void QutoolsTDCHardwareAdapter::SetCoincidenceWindow(ValueType CoincidenceWindow) const
+	void QutoolsStandardTDCHardwareAdapter::SetCoincidenceWindow(ValueType CoincidenceWindow) const
 	{
 		auto TDCLock = QutoolsTDCSynchronizer::Lock();
 		AddressThisTDCDeviceUnsafe();
@@ -135,7 +135,7 @@ namespace DynExpHardware
 		SetCoincidenceWindowUnsafe(CoincidenceWindow);
 	}
 
-	void QutoolsTDCHardwareAdapter::SetChannelDelay(ChannelType Channel, Util::picoseconds ChannelDelay) const
+	void QutoolsStandardTDCHardwareAdapter::SetChannelDelay(ChannelType Channel, Util::picoseconds ChannelDelay) const
 	{
 		auto TDCLock = QutoolsTDCSynchronizer::Lock();
 		AddressThisTDCDeviceUnsafe();
@@ -143,7 +143,7 @@ namespace DynExpHardware
 		SetChannelDelayUnsafe(Channel, ChannelDelay);
 	}
 
-	void QutoolsTDCHardwareAdapter::SetTimestampBufferSize(QutoolsTDCSyms::Int32 Size) const
+	void QutoolsStandardTDCHardwareAdapter::SetTimestampBufferSize(QutoolsTDCSyms::Int32 Size) const
 	{
 		auto TDCLock = QutoolsTDCSynchronizer::Lock();
 		AddressThisTDCDeviceUnsafe();
@@ -151,7 +151,7 @@ namespace DynExpHardware
 		SetTimestampBufferSizeUnsafe(Size);
 	}
 
-	void QutoolsTDCHardwareAdapter::ConfigureSignalConditioning(ChannelType Channel,
+	void QutoolsStandardTDCHardwareAdapter::ConfigureSignalConditioning(ChannelType Channel,
 		QutoolsTDCSyms::TDC_SignalCond Conditioning, bool UseRisingEdge, double ThresholdInVolts) const
 	{
 		auto TDCLock = QutoolsTDCSynchronizer::Lock();
@@ -160,7 +160,7 @@ namespace DynExpHardware
 		ConfigureSignalConditioningUnsafe(Channel, Conditioning, UseRisingEdge, ThresholdInVolts);
 	}
 
-	void QutoolsTDCHardwareAdapter::ConfigureFilter(ChannelType Channel, QutoolsTDCSyms::TDC_FilterType FilterType,
+	void QutoolsStandardTDCHardwareAdapter::ConfigureFilter(ChannelType Channel, QutoolsTDCSyms::TDC_FilterType FilterType,
 		QutoolsTDCSyms::Int32 ChannelMask) const
 	{
 		auto TDCLock = QutoolsTDCSynchronizer::Lock();
@@ -169,7 +169,7 @@ namespace DynExpHardware
 		ConfigureFilterUnsafe(Channel, FilterType, ChannelMask);
 	}
 
-	void QutoolsTDCHardwareAdapter::EnableHBT(bool Enable) const
+	void QutoolsStandardTDCHardwareAdapter::EnableHBT(bool Enable) const
 	{
 		auto TDCLock = QutoolsTDCSynchronizer::Lock();
 		AddressThisTDCDeviceUnsafe();
@@ -177,7 +177,7 @@ namespace DynExpHardware
 		EnableHBTUnsafe(Enable);
 	}
 
-	void QutoolsTDCHardwareAdapter::ConfigureHBTChannels(ChannelType FirstChannel, ChannelType SecondChannel) const
+	void QutoolsStandardTDCHardwareAdapter::ConfigureHBTChannels(ChannelType FirstChannel, ChannelType SecondChannel) const
 	{
 		if (FirstChannel >= 31 || SecondChannel >= 31)
 			ThrowExceptionUnsafe(std::make_exception_ptr(Util::OutOfRangeException(
@@ -189,7 +189,7 @@ namespace DynExpHardware
 		ConfigureHBTChannelsUnsafe(FirstChannel, SecondChannel);
 	}
 
-	void QutoolsTDCHardwareAdapter::ConfigureHBTParams(Util::picoseconds BinWidth, QutoolsTDCSyms::Int32 BinCount) const
+	void QutoolsStandardTDCHardwareAdapter::ConfigureHBTParams(Util::picoseconds BinWidth, QutoolsTDCSyms::Int32 BinCount) const
 	{
 		auto TDCLock = QutoolsTDCSynchronizer::Lock();
 		AddressThisTDCDeviceUnsafe();
@@ -197,7 +197,7 @@ namespace DynExpHardware
 		ConfigureHBTParamsUnsafe(BinWidth, BinCount);
 	}
 
-	void QutoolsTDCHardwareAdapter::ResetHBT() const
+	void QutoolsStandardTDCHardwareAdapter::ResetHBT() const
 	{
 		auto TDCLock = QutoolsTDCSynchronizer::Lock();
 		AddressThisTDCDeviceUnsafe();
@@ -205,7 +205,7 @@ namespace DynExpHardware
 		ResetHBTUnsafe();
 	}
 
-	QutoolsTDCSyms::Int64 QutoolsTDCHardwareAdapter::GetHBTEventCounts() const
+	QutoolsTDCSyms::Int64 QutoolsStandardTDCHardwareAdapter::GetHBTEventCounts() const
 	{
 		auto TDCLock = QutoolsTDCSynchronizer::Lock();
 		AddressThisTDCDeviceUnsafe();
@@ -213,7 +213,7 @@ namespace DynExpHardware
 		return GetHBTEventCountsUnsafe();
 	}
 
-	std::chrono::microseconds QutoolsTDCHardwareAdapter::GetHBTIntegrationTime() const
+	std::chrono::microseconds QutoolsStandardTDCHardwareAdapter::GetHBTIntegrationTime() const
 	{
 		auto TDCLock = QutoolsTDCSynchronizer::Lock();
 		AddressThisTDCDeviceUnsafe();
@@ -221,7 +221,7 @@ namespace DynExpHardware
 		return GetHBTIntegrationTimeUnsafe();
 	}
 
-	QutoolsTDCHardwareAdapter::HBTResultsType QutoolsTDCHardwareAdapter::GetHBTResult() const
+	QutoolsStandardTDCHardwareAdapter::HBTResultsType QutoolsStandardTDCHardwareAdapter::GetHBTResult() const
 	{
 		auto TDCLock = QutoolsTDCSynchronizer::Lock();
 		AddressThisTDCDeviceUnsafe();
@@ -229,14 +229,14 @@ namespace DynExpHardware
 		return GetHBTResultUnsafe();
 	}
 
-	QutoolsTDCHardwareAdapter::ValueType QutoolsTDCHardwareAdapter::GetTimebase() const
+	QutoolsStandardTDCHardwareAdapter::ValueType QutoolsStandardTDCHardwareAdapter::GetTimebase() const
 	{
 		auto lock = AcquireLock(HardwareOperationTimeout);
 
 		return Timebase;
 	}
 
-	QutoolsTDCSyms::Int32 QutoolsTDCHardwareAdapter::GetBufferSize() const
+	QutoolsTDCSyms::Int32 QutoolsStandardTDCHardwareAdapter::GetBufferSize() const
 	{
 		auto lock = AcquireLock(HardwareOperationTimeout);
 
@@ -244,18 +244,18 @@ namespace DynExpHardware
 	}
 
 	// Extracts timestamp series for specific channel.
-	std::vector<QutoolsTDCHardwareAdapter::ValueType> QutoolsTDCHardwareAdapter::GetTimestamps(ChannelType Channel) const
+	std::vector<QutoolsStandardTDCHardwareAdapter::ValueType> QutoolsStandardTDCHardwareAdapter::GetTimestamps(ChannelType Channel) const
 	{
 		auto lock = AcquireLock(HardwareOperationTimeout);
 
 		ReadTimestampsUnsafe();
 
 		auto Timestamps = TimestampsPerChannel.extract(Channel);
-		return !Timestamps.empty() ? std::move(Timestamps.mapped()) : std::vector<QutoolsTDCHardwareAdapter::ValueType>();
+		return !Timestamps.empty() ? std::move(Timestamps.mapped()) : std::vector<QutoolsStandardTDCHardwareAdapter::ValueType>();
 	}
 
 	// Just sums up timestamp series for specific channel while keeping the series.
-	size_t QutoolsTDCHardwareAdapter::GetCountsFromTimestamps(ChannelType Channel) const
+	size_t QutoolsStandardTDCHardwareAdapter::GetCountsFromTimestamps(ChannelType Channel) const
 	{
 		auto lock = AcquireLock(HardwareOperationTimeout);
 
@@ -264,7 +264,7 @@ namespace DynExpHardware
 		return TimestampsPerChannel[Channel].size();
 	}
 
-	const QutoolsTDCHardwareAdapter::CoincidenceDataType& QutoolsTDCHardwareAdapter::GetCoincidenceCounts() const
+	const QutoolsStandardTDCHardwareAdapter::CoincidenceDataType& QutoolsStandardTDCHardwareAdapter::GetCoincidenceCounts() const
 	{
 		auto TDCLock = QutoolsTDCSynchronizer::Lock();
 		AddressThisTDCDeviceUnsafe();
@@ -273,7 +273,7 @@ namespace DynExpHardware
 		std::vector<QutoolsTDCSyms::Int32> Counts(59);
 		QutoolsTDCSyms::Int32 NumUpdates{};
 
-		auto Result = QutoolsTDCSyms::TDC_getCoincCounters(Counts.data(), &NumUpdates);
+		auto Result = QutoolsTDCSyms::TDC_getCoincCounters(Counts.data(), &NumUpdates); // Q: Different for Standard compared to MC!
 		CheckError(Result);
 
 		if (NumUpdates)
@@ -284,7 +284,7 @@ namespace DynExpHardware
 
 	// First of pair denotes the coincidences of the specified channel (combination), second of pair denotes the number
 	// of updates the qutools TDC device has made since the last call to TDC_getCoincCounters().
-	std::pair<QutoolsTDCSyms::Int32, QutoolsTDCSyms::Int32> QutoolsTDCHardwareAdapter::GetCoincidenceCounts(ChannelType Channel) const
+	std::pair<QutoolsTDCSyms::Int32, QutoolsTDCSyms::Int32> QutoolsStandardTDCHardwareAdapter::GetCoincidenceCounts(ChannelType Channel) const
 	{
 		// See documentation for TDC_getCoincCounters()
 		if (Channel < 0 || Channel >= 59)
@@ -303,14 +303,14 @@ namespace DynExpHardware
 		return RetVal;
 	}
 
-	void QutoolsTDCHardwareAdapter::ClearTimestamps(ChannelType Channel) const
+	void QutoolsStandardTDCHardwareAdapter::ClearTimestamps(ChannelType Channel) const
 	{
 		auto lock = AcquireLock(HardwareOperationTimeout);
 
 		TimestampsPerChannel[Channel].clear();
 	}
 
-	void QutoolsTDCHardwareAdapter::Init()
+	void QutoolsStandardTDCHardwareAdapter::Init()
 	{
 		DeviceConnected = false;
 		DeviceNumber = std::numeric_limits<decltype(DeviceNumber)>::max();
@@ -321,7 +321,7 @@ namespace DynExpHardware
 		CoincidenceData = {};
 	}
 
-	void QutoolsTDCHardwareAdapter::ResetImpl(dispatch_tag<HardwareAdapterBase>)
+	void QutoolsStandardTDCHardwareAdapter::ResetImpl(dispatch_tag<HardwareAdapterBase>)
 	{
 		// auto lock = AcquireLock(); not necessary here, since DynExp ensures that Object::Reset() can only
 		// be called if respective object is not in use.
@@ -329,17 +329,17 @@ namespace DynExpHardware
 		CloseUnsafe();
 		Init();
 
-		ResetImpl(dispatch_tag<QutoolsTDCHardwareAdapter>());
+		ResetImpl(dispatch_tag<QutoolsStandardTDCHardwareAdapter>());
 	}
 
-	void QutoolsTDCHardwareAdapter::EnsureReadyStateChild()
+	void QutoolsStandardTDCHardwareAdapter::EnsureReadyStateChild()
 	{
 		auto lock = AcquireLock(HardwareOperationTimeout);
 
 		OpenUnsafe();
 	}
 
-	bool QutoolsTDCHardwareAdapter::IsReadyChild() const
+	bool QutoolsStandardTDCHardwareAdapter::IsReadyChild() const
 	{
 		auto lock = AcquireLock(HardwareOperationTimeout);
 
@@ -349,12 +349,12 @@ namespace DynExpHardware
 		return IsOpened();
 	}
 
-	bool QutoolsTDCHardwareAdapter::IsConnectedChild() const noexcept
+	bool QutoolsStandardTDCHardwareAdapter::IsConnectedChild() const noexcept
 	{
 		return IsOpened();
 	}
 
-	void QutoolsTDCHardwareAdapter::CheckError(const int Result, const std::source_location Location) const
+	void QutoolsStandardTDCHardwareAdapter::CheckError(const int Result, const std::source_location Location) const
 	{
 		if (Result == TDC_Ok)
 			return;
@@ -365,7 +365,7 @@ namespace DynExpHardware
 		ThrowExceptionUnsafe(std::make_exception_ptr(QutoolsTDCException(std::move(ErrorString), Result, Location)));
 	}
 
-	void QutoolsTDCHardwareAdapter::OpenUnsafe()
+	void QutoolsStandardTDCHardwareAdapter::OpenUnsafe()
 	{
 		if (IsOpened())
 			return;
@@ -378,7 +378,7 @@ namespace DynExpHardware
 		ValueType CoincidenceWindow{};
 
 		{
-			auto DerivedParams = dynamic_Params_cast<QutoolsTDCHardwareAdapter>(GetParams());
+			auto DerivedParams = dynamic_Params_cast<QutoolsStandardTDCHardwareAdapter>(GetParams());
 
 			auto DeviceSerials = Enumerate();
 			auto DeviceSerialIt = std::find(DeviceSerials.cbegin(), DeviceSerials.cend(), DerivedParams->DeviceDescriptor.Get());
@@ -393,7 +393,7 @@ namespace DynExpHardware
 			}
 
 			TimestampBufferSize = DerivedParams->DefaultTimestampBufferSize;
-			UseRisingEdge = DerivedParams->DefaultTriggerEdge == QutoolsTDCHardwareAdapterParams::EdgeType::RisingEdge;
+			UseRisingEdge = DerivedParams->DefaultTriggerEdge == QutoolsStandardTDCHardwareAdapterParams::EdgeType::RisingEdge;
 			ThresholdInVolts = DerivedParams->DefaultThresholdInVolts;
 			ExposureTime = std::chrono::milliseconds(DerivedParams->DefaultExposureTime);
 			CoincidenceWindow = ValueType(DerivedParams->DefaultCoincidenceWindow);
@@ -417,7 +417,7 @@ namespace DynExpHardware
 		CheckError(Result);
 		this->BufferSize = BufferSize;
 
-		ChannelCount = QutoolsTDCSyms::TDC_getChannelCount();
+		ChannelCount = 5; // Q: Number of channels (including the start input) has to be hard-coded here, since this function does not exist for quTAG standard.
 
 		SetTimestampBufferSizeUnsafe(TimestampBufferSize);
 		SetExposureTimeUnsafe(ExposureTime);
@@ -426,7 +426,7 @@ namespace DynExpHardware
 			ConfigureSignalConditioningUnsafe(i, QutoolsTDCSyms::SCOND_MISC, UseRisingEdge, ThresholdInVolts);
 	}
 
-	void QutoolsTDCHardwareAdapter::CloseUnsafe()
+	void QutoolsStandardTDCHardwareAdapter::CloseUnsafe()
 	{
 		if (IsOpened())
 		{
@@ -438,13 +438,13 @@ namespace DynExpHardware
 		}
 	}
 
-	void QutoolsTDCHardwareAdapter::AddressThisTDCDeviceUnsafe() const
+	void QutoolsStandardTDCHardwareAdapter::AddressThisTDCDeviceUnsafe() const
 	{
 		auto Result = QutoolsTDCSyms::TDC_addressDevice(DeviceNumber);
 		CheckError(Result);
 	}
 
-	void QutoolsTDCHardwareAdapter::ReadTimestampsUnsafe() const
+	void QutoolsStandardTDCHardwareAdapter::ReadTimestampsUnsafe() const
 	{
 		std::vector<QutoolsTDCSyms::Int64> Timestamps(BufferSize);
 		std::vector<ChannelType> Channels(BufferSize);
@@ -454,7 +454,7 @@ namespace DynExpHardware
 			auto TDCLock = QutoolsTDCSynchronizer::Lock();
 			AddressThisTDCDeviceUnsafe();
 
-			auto Result = QutoolsTDCSyms::TDC_getLastTimestamps(true, Timestamps.data(), Channels.data(), &NumValid);
+			auto Result = QutoolsTDCSyms::TDC_getLastTimestamps(true, Timestamps.data(), Channels.data(), &NumValid); // Q: Slight difference to MC: channels only goes from 0 to 7 (instead of 31)
 			CheckError(Result);
 		} // TDCLock unlocked here.
 
@@ -467,44 +467,45 @@ namespace DynExpHardware
 	}
 
 	// QutoolsTDCSynchronizer::Lock() and AddressThisTDCDeviceUnsafe() must be called manually before calling this function!
-	void QutoolsTDCHardwareAdapter::EnableChannelsUnsafe(bool EnableStartChannel, QutoolsTDCSyms::Int32 ChannelMask) const
+	void QutoolsStandardTDCHardwareAdapter::EnableChannelsUnsafe(bool EnableStartChannel, QutoolsTDCSyms::Int32 ChannelMask) const
 	{
-		auto Result = QutoolsTDCSyms::TDC_enableChannels(EnableStartChannel, ChannelMask);
+		auto Result = QutoolsTDCSyms::TDC_enableChannels(ChannelMask); // Q: Here, as well. The start channel is always enabled. Where is the value for the channel mask set?  How can I remove this from the input of EnableChannelsUnsafe? this from the 
 		CheckError(Result);
 	}
 
 	// QutoolsTDCSynchronizer::Lock() and AddressThisTDCDeviceUnsafe() must be called manually before calling this function!
 	// First of pair denotes whether the start channel is enabled, second of pair denotes the mask of enabled channels.
-	std::pair<bool, QutoolsTDCSyms::Int32> QutoolsTDCHardwareAdapter::GetEnabledChannelsUnsafe() const
+	std::pair<bool, QutoolsTDCSyms::Int32> QutoolsStandardTDCHardwareAdapter::GetEnabledChannelsUnsafe() const
 	{
 		QutoolsTDCSyms::Bln32 StartEnabled{};
 		QutoolsTDCSyms::Int32 ChannelMask{};
 
-		auto Result = QutoolsTDCSyms::TDC_getChannelsEnabled(&StartEnabled, &ChannelMask);
+		auto Result = QutoolsTDCSyms::TDC_getChannelsEnabled(&ChannelMask); // E.g. ChannelMask = 31 means that all channels 1-5 are enabled.
 		CheckError(Result);
 
-		return std::make_pair(static_cast<bool>(StartEnabled), ChannelMask);
+		StartEnabled = true;// Q: With the quTAG standard the start channel is always enabled. What should be returned in the next line? Where is this return value needed? Where is this function called?
+		return std::make_pair(static_cast<bool>(StartEnabled), ChannelMask); 
 	}
 
-	void QutoolsTDCHardwareAdapter::SetExposureTimeUnsafe(std::chrono::milliseconds ExposureTime) const
+	void QutoolsStandardTDCHardwareAdapter::SetExposureTimeUnsafe(std::chrono::milliseconds ExposureTime) const
 	{
 		auto Result = QutoolsTDCSyms::TDC_setExposureTime(Util::NumToT<QutoolsTDCSyms::Int32>(ExposureTime.count()));
 		CheckError(Result);
 	}
 
-	void QutoolsTDCHardwareAdapter::SetCoincidenceWindowUnsafe(ValueType CoincidenceWindow) const
+	void QutoolsStandardTDCHardwareAdapter::SetCoincidenceWindowUnsafe(ValueType CoincidenceWindow) const
 	{
 		auto Result = QutoolsTDCSyms::TDC_setCoincidenceWindow(Util::NumToT<QutoolsTDCSyms::Int32>(CoincidenceWindow / Timebase));
 		CheckError(Result);
 	}
 
-	void QutoolsTDCHardwareAdapter::SetChannelDelayUnsafe(ChannelType Channel, Util::picoseconds ChannelDelay) const
+	void QutoolsStandardTDCHardwareAdapter::SetChannelDelayUnsafe(ChannelType Channel, Util::picoseconds ChannelDelay) const
 	{
-		auto Result = QutoolsTDCSyms::TDC_setChannelDelay(Channel, Util::NumToT<QutoolsTDCSyms::Int32>(ChannelDelay.count()));
+		auto Result = 0; //QutoolsTDCSyms::TDC_setChannelDelay(Channel, Util::NumToT<QutoolsTDCSyms::Int32>(ChannelDelay.count())); // Q: Different than in MC.
 		CheckError(Result);
 	}
 
-	void QutoolsTDCHardwareAdapter::SetTimestampBufferSizeUnsafe(QutoolsTDCSyms::Int32 Size) const
+	void QutoolsStandardTDCHardwareAdapter::SetTimestampBufferSizeUnsafe(QutoolsTDCSyms::Int32 Size) const
 	{
 		auto Result = QutoolsTDCSyms::TDC_setTimestampBufferSize(Size);
 		CheckError(Result);
@@ -512,45 +513,45 @@ namespace DynExpHardware
 		BufferSize = Size;
 	}
 
-	void QutoolsTDCHardwareAdapter::ConfigureSignalConditioningUnsafe(ChannelType Channel,
+	void QutoolsStandardTDCHardwareAdapter::ConfigureSignalConditioningUnsafe(ChannelType Channel,
 		QutoolsTDCSyms::TDC_SignalCond Conditioning,bool UseRisingEdge, double ThresholdInVolts) const
 	{
-		auto Result = QutoolsTDCSyms::TDC_configureSignalConditioning(Channel, Conditioning, UseRisingEdge, ThresholdInVolts);
+		auto Result = QutoolsTDCSyms::TDC_configureSignalConditioning(Channel, Conditioning, UseRisingEdge, ThresholdInVolts); // channel 0 = start as for MC?
 		CheckError(Result);
 	}
 
-	void QutoolsTDCHardwareAdapter::ConfigureFilterUnsafe(ChannelType Channel,
+	void QutoolsStandardTDCHardwareAdapter::ConfigureFilterUnsafe(ChannelType Channel,
 		QutoolsTDCSyms::TDC_FilterType FilterType, QutoolsTDCSyms::Int32 ChannelMask) const
 	{
-		auto Result = QutoolsTDCSyms::TDC_configureFilter(Channel + 1, FilterType, ChannelMask);
-		CheckError(Result);
+		auto Result = QutoolsTDCSyms::TDC_configureFilter(Channel + 1, FilterType, ChannelMask); // Q: It is not clear to me, why the output is always 14 (	Requested feature is not available.).
+		//CheckError(Result); // Q: Out-commented for now...
 	}
 
-	void QutoolsTDCHardwareAdapter::EnableHBTUnsafe(bool Enable) const
+	void QutoolsStandardTDCHardwareAdapter::EnableHBTUnsafe(bool Enable) const
 	{
 		auto Result = QutoolsTDCSyms::TDC_enableHbt(Enable);
 		CheckError(Result);
 	}
 
-	void QutoolsTDCHardwareAdapter::ConfigureHBTChannelsUnsafe(ChannelType FirstChannel, ChannelType SecondChannel) const
+	void QutoolsStandardTDCHardwareAdapter::ConfigureHBTChannelsUnsafe(ChannelType FirstChannel, ChannelType SecondChannel) const
 	{
 		auto Result = QutoolsTDCSyms::TDC_setHbtInput(FirstChannel + 1, SecondChannel + 1);
 		CheckError(Result);
 	}
 
-	void QutoolsTDCHardwareAdapter::ConfigureHBTParamsUnsafe(Util::picoseconds BinWidth, QutoolsTDCSyms::Int32 BinCount) const
+	void QutoolsStandardTDCHardwareAdapter::ConfigureHBTParamsUnsafe(Util::picoseconds BinWidth, QutoolsTDCSyms::Int32 BinCount) const
 	{
 		auto Result = QutoolsTDCSyms::TDC_setHbtParams(Util::NumToT<QutoolsTDCSyms::Int32>(BinWidth / Timebase), BinCount);
 		CheckError(Result);
 	}
 
-	void QutoolsTDCHardwareAdapter::ResetHBTUnsafe() const
+	void QutoolsStandardTDCHardwareAdapter::ResetHBTUnsafe() const
 	{
 		auto Result = QutoolsTDCSyms::TDC_resetHbtCorrelations();
 		CheckError(Result);
 	}
 
-	QutoolsTDCSyms::Int64 QutoolsTDCHardwareAdapter::GetHBTEventCountsUnsafe() const
+	QutoolsTDCSyms::Int64 QutoolsStandardTDCHardwareAdapter::GetHBTEventCountsUnsafe() const
 	{
 		QutoolsTDCSyms::Int64 TotalCount{}, LastCount{};
 		double LastRate{};
@@ -561,7 +562,7 @@ namespace DynExpHardware
 		return TotalCount;
 	}
 
-	std::chrono::microseconds QutoolsTDCHardwareAdapter::GetHBTIntegrationTimeUnsafe() const
+	std::chrono::microseconds QutoolsStandardTDCHardwareAdapter::GetHBTIntegrationTimeUnsafe() const
 	{
 		double IntegrationTime{};
 
@@ -571,7 +572,7 @@ namespace DynExpHardware
 		return std::chrono::microseconds(static_cast<std::chrono::microseconds::rep>(std::round(IntegrationTime * std::micro::den)));
 	}
 
-	QutoolsTDCHardwareAdapter::HBTResultsType QutoolsTDCHardwareAdapter::GetHBTResultUnsafe() const
+	QutoolsStandardTDCHardwareAdapter::HBTResultsType QutoolsStandardTDCHardwareAdapter::GetHBTResultUnsafe() const
 	{
 		auto HBTFunc = QutoolsTDCSyms::TDC_createHbtFunction();
 		if (!HBTFunc)

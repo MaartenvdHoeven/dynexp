@@ -1,7 +1,7 @@
 // This file is part of DynExp.
 
 /**
- * @file HardwareAdapterQutoolsTDC.h
+ * @file HardwareAdapterQutoolsStandardTDC.h
  * @brief Implementation of a hardware adapter to control qutools TDC
  * hardware.
 */
@@ -21,7 +21,7 @@ namespace DynExpHardware::QutoolsTDCSyms
 
 namespace DynExpHardware
 {
-	class QutoolsTDCHardwareAdapter;
+	class QutoolsStandardTDCHardwareAdapter;
 
 	class QutoolsTDCException : public Util::Exception
 	{
@@ -32,17 +32,17 @@ namespace DynExpHardware
 		{}
 	};
 
-	class QutoolsTDCHardwareAdapterParams : public DynExp::HardwareAdapterParamsBase
+	class QutoolsStandardTDCHardwareAdapterParams : public DynExp::HardwareAdapterParamsBase
 	{
 	public:
 		enum EdgeType { RisingEdge, FallingEdge };
 
 		static Util::TextValueListType<EdgeType> EdgeTypeStrList();
 
-		QutoolsTDCHardwareAdapterParams(DynExp::ItemIDType ID, const DynExp::DynExpCore& Core) : HardwareAdapterParamsBase(ID, Core) {}
-		virtual ~QutoolsTDCHardwareAdapterParams() = default;
+		QutoolsStandardTDCHardwareAdapterParams(DynExp::ItemIDType ID, const DynExp::DynExpCore& Core) : HardwareAdapterParamsBase(ID, Core) {}
+		virtual ~QutoolsStandardTDCHardwareAdapterParams() = default;
 
-		virtual const char* GetParamClassTag() const noexcept override { return "QutoolsTDCHardwareAdapterParams"; }
+		virtual const char* GetParamClassTag() const noexcept override { return "QutoolsStandardTDCHardwareAdapterParams"; }
 
 		Param<TextList> DeviceDescriptor = { *this, {}, "DeviceDescriptor", "Device serial",
 			"Serial of the qutools TDC device to connect with" };
@@ -64,29 +64,29 @@ namespace DynExpHardware
 
 	private:
 		void ConfigureParamsImpl(dispatch_tag<HardwareAdapterParamsBase>) override final;
-		virtual void ConfigureParamsImpl(dispatch_tag<QutoolsTDCHardwareAdapterParams>) {}
+		virtual void ConfigureParamsImpl(dispatch_tag<QutoolsStandardTDCHardwareAdapterParams>) {}
 	};
 
-	class QutoolsTDCHardwareAdapterConfigurator : public DynExp::HardwareAdapterConfiguratorBase
+	class QutoolsStandardTDCHardwareAdapterConfigurator : public DynExp::HardwareAdapterConfiguratorBase
 	{
 	public:
-		using ObjectType = QutoolsTDCHardwareAdapter;
-		using ParamsType = QutoolsTDCHardwareAdapterParams;
+		using ObjectType = QutoolsStandardTDCHardwareAdapter;
+		using ParamsType = QutoolsStandardTDCHardwareAdapterParams;
 
-		QutoolsTDCHardwareAdapterConfigurator() = default;
-		virtual ~QutoolsTDCHardwareAdapterConfigurator() = default;
+		QutoolsStandardTDCHardwareAdapterConfigurator() = default;
+		virtual ~QutoolsStandardTDCHardwareAdapterConfigurator() = default;
 
 	private:
-		virtual DynExp::ParamsBasePtrType MakeParams(DynExp::ItemIDType ID, const DynExp::DynExpCore& Core) const override { return DynExp::MakeParams<QutoolsTDCHardwareAdapterConfigurator>(ID, Core); }
+		virtual DynExp::ParamsBasePtrType MakeParams(DynExp::ItemIDType ID, const DynExp::DynExpCore& Core) const override { return DynExp::MakeParams<QutoolsStandardTDCHardwareAdapterConfigurator>(ID, Core); }
 	};
 
-	class QutoolsTDCHardwareAdapter : public DynExp::HardwareAdapterBase
+	class QutoolsStandardTDCHardwareAdapter : public DynExp::HardwareAdapterBase
 	{
 		/**
 		 * @brief Only one instance of this class is allowed for synchronizing calls to
 		 * connected qutools time taggers. This is required since @p TDC_addressDevice()
 		 * selects a single device globally.
-		 * @warning Always lock the mutex of @p QutoolsTDCHardwareAdapter (by a call to
+		 * @warning Always lock the mutex of @p QutoolsStandardTDCHardwareAdapter (by a call to
 		 * Util::ILockable::AcquireLock()) before the @p QutoolsTDCSynchronizer (by a call
 		 * to QutoolsTDCSynchronizer::Lock()).
 		*/
@@ -119,8 +119,8 @@ namespace DynExpHardware
 			std::vector<char> HasBeenRead;
 		};
 
-		using ParamsType = QutoolsTDCHardwareAdapterParams;
-		using ConfigType = QutoolsTDCHardwareAdapterConfigurator;
+		using ParamsType = QutoolsStandardTDCHardwareAdapterParams;
+		using ConfigType = QutoolsStandardTDCHardwareAdapterConfigurator;
 		using ChannelType = QutoolsTDCSyms::Uint8;
 		using ValueType = Util::picoseconds;
 		using HBTResultsType = DynExpInstr::TimeTaggerData::HBTResultsType::ResultVectorType;
@@ -129,8 +129,8 @@ namespace DynExpHardware
 		constexpr static auto Category() noexcept { return "I/O"; }
 		static auto Enumerate();
 
-		QutoolsTDCHardwareAdapter(const std::thread::id OwnerThreadID, DynExp::ParamsBasePtrType&& Params);
-		virtual ~QutoolsTDCHardwareAdapter();
+		QutoolsStandardTDCHardwareAdapter(const std::thread::id OwnerThreadID, DynExp::ParamsBasePtrType&& Params);
+		virtual ~QutoolsStandardTDCHardwareAdapter();
 
 		virtual std::string GetName() const override { return Name(); }
 		virtual std::string GetCategory() const override { return Category(); }
@@ -169,7 +169,7 @@ namespace DynExpHardware
 		void Init();
 
 		void ResetImpl(dispatch_tag<HardwareAdapterBase>) override final;
-		virtual void ResetImpl(dispatch_tag<QutoolsTDCHardwareAdapter>) {}
+		virtual void ResetImpl(dispatch_tag<QutoolsStandardTDCHardwareAdapter>) {}
 
 		void EnsureReadyStateChild() override final;
 		bool IsReadyChild() const override final;
