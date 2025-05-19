@@ -90,7 +90,7 @@ namespace DynExpHardware
 		auto TDCLock = QutoolsTDCSynchronizer::Lock();
 		AddressThisTDCDeviceUnsafe();
 
-		EnableChannelsUnsafe(EnableStartChannel, ChannelMask);
+		EnableChannelsUnsafe(ChannelMask);
 	}
 
 	void QutoolsStandardTDCHardwareAdapter::EnableChannel(ChannelType Channel) const
@@ -103,7 +103,7 @@ namespace DynExpHardware
 				"Specify a channel between 0 and " + Util::ToStr(ChannelCount))));
 
 		auto CurrentState = GetEnabledChannelsUnsafe();
-		EnableChannelsUnsafe(CurrentState.first, CurrentState.second | (1 << Channel));
+		EnableChannelsUnsafe(CurrentState.second | (1 << Channel));
 	}
 
 	void QutoolsStandardTDCHardwareAdapter::DisableChannel(ChannelType Channel) const
@@ -116,7 +116,7 @@ namespace DynExpHardware
 				"Specify a channel between 0 and " + Util::ToStr(ChannelCount))));
 
 		auto CurrentState = GetEnabledChannelsUnsafe();
-		EnableChannelsUnsafe(CurrentState.first, CurrentState.second & ~(1 << Channel));
+		EnableChannelsUnsafe(CurrentState.second & ~(1 << Channel));
 	}
 
 	void QutoolsStandardTDCHardwareAdapter::SetExposureTime(std::chrono::milliseconds ExposureTime) const
@@ -179,9 +179,9 @@ namespace DynExpHardware
 
 	void QutoolsStandardTDCHardwareAdapter::ConfigureHBTChannels(ChannelType FirstChannel, ChannelType SecondChannel) const
 	{
-		if (FirstChannel >= 31 || SecondChannel >= 31)
+		if (FirstChannel >= 5 || SecondChannel >= 5) // DIFFERENCE TO MC: Only channels 0 to 5.
 			ThrowExceptionUnsafe(std::make_exception_ptr(Util::OutOfRangeException(
-				"Specify valid channels between 0 and 31.")));
+				"Specify valid channels between 0 and 5.")));
 
 		auto TDCLock = QutoolsTDCSynchronizer::Lock();
 		AddressThisTDCDeviceUnsafe();
@@ -264,16 +264,16 @@ namespace DynExpHardware
 		return TimestampsPerChannel[Channel].size();
 	}
 
-	const QutoolsStandardTDCHardwareAdapter::CoincidenceDataType& QutoolsStandardTDCHardwareAdapter::GetCoincidenceCounts() const
+	const QutoolsStandardTDCHardwareAdapter::CoincidenceDataType& QutoolsStandardTDCHardwareAdapter::GetCoincidenceCounts() const // DIFFERENCE TO MC: The first input of the function TDC_getCoincCounters can have less entries, since the number of channels is lower. 
 	{
 		auto TDCLock = QutoolsTDCSynchronizer::Lock();
 		AddressThisTDCDeviceUnsafe();
 
 		// See documentation for TDC_getCoincCounters()
-		std::vector<QutoolsTDCSyms::Int32> Counts(59);
+		std::vector<QutoolsTDCSyms::Int32> Counts(59);  // The array must have 31 elements: 0(5), 1, 2, 3, 4, 1/2, 1/3, 2/3, 1/4, 2/4, 3/4, 1/5, 2/5, 3/5, 4/5, 1/2/3, 1/2/4, 1/3/4, 2/3/4, 1/2/5, 1/3/5, 2/3/5, 1/4/5, 2/4/5, 3/4/5, 1/2/3/4, 1/2/3/5, 1/2/4/5, 1/3/4/5, 2/3/4/5, 1/2/3/4/5:
 		QutoolsTDCSyms::Int32 NumUpdates{};
 
-		auto Result = QutoolsTDCSyms::TDC_getCoincCounters(Counts.data(), &NumUpdates); // Q: Different for Standard compared to MC!
+		auto Result = QutoolsTDCSyms::TDC_getCoincCounters(Counts.data(), &NumUpdates);
 		CheckError(Result);
 
 		if (NumUpdates)
@@ -454,7 +454,7 @@ namespace DynExpHardware
 			auto TDCLock = QutoolsTDCSynchronizer::Lock();
 			AddressThisTDCDeviceUnsafe();
 
-			auto Result = QutoolsTDCSyms::TDC_getLastTimestamps(true, Timestamps.data(), Channels.data(), &NumValid); // Q: Slight difference to MC: channels only goes from 0 to 7 (instead of 31)
+			auto Result = QutoolsTDCSyms::TDC_getLastTimestamps(true, Timestamps.data(), Channels.data(), &NumValid); // DIFFERENCE TO MC: Channels only goes from 0 to 7 (instead of 31).
 			CheckError(Result);
 		} // TDCLock unlocked here.
 
@@ -467,24 +467,24 @@ namespace DynExpHardware
 	}
 
 	// QutoolsTDCSynchronizer::Lock() and AddressThisTDCDeviceUnsafe() must be called manually before calling this function!
-	void QutoolsStandardTDCHardwareAdapter::EnableChannelsUnsafe(bool EnableStartChannel, QutoolsTDCSyms::Int32 ChannelMask) const
+	void QutoolsStandardTDCHardwareAdapter::EnableChannelsUnsafe(QutoolsTDCSyms::Int32 ChannelMask) const // DIFFERENCE TO MC: The quTAG Standard treats the start channel as channel 0.
 	{
-		auto Result = QutoolsTDCSyms::TDC_enableChannels(ChannelMask); // Q: Here, as well. The start channel is always enabled. Where is the value for the channel mask set?  How can I remove this from the input of EnableChannelsUnsafe? this from the 
+		auto Result = QutoolsTDCSyms::TDC_enableChannels(ChannelMask);  // E.g. ChannelMask = 31 means that start (channel 0) and all channels 1-4 are enabled.
 		CheckError(Result);
 	}
 
 	// QutoolsTDCSynchronizer::Lock() and AddressThisTDCDeviceUnsafe() must be called manually before calling this function!
 	// First of pair denotes whether the start channel is enabled, second of pair denotes the mask of enabled channels.
-	std::pair<bool, QutoolsTDCSyms::Int32> QutoolsStandardTDCHardwareAdapter::GetEnabledChannelsUnsafe() const
+	std::pair<bool, QutoolsTDCSyms::Int32> QutoolsStandardTDCHardwareAdapter::GetEnabledChannelsUnsafe() const // DIFFERENCE TO MC: The quTAG Standard treats the start channel as channel 0.
 	{
 		QutoolsTDCSyms::Bln32 StartEnabled{};
 		QutoolsTDCSyms::Int32 ChannelMask{};
 
-		auto Result = QutoolsTDCSyms::TDC_getChannelsEnabled(&ChannelMask); // E.g. ChannelMask = 31 means that all channels 1-5 are enabled.
+		auto Result = QutoolsTDCSyms::TDC_getChannelsEnabled(&ChannelMask);
 		CheckError(Result);
 
-		StartEnabled = true;// Q: With the quTAG standard the start channel is always enabled. What should be returned in the next line? Where is this return value needed? Where is this function called?
-		return std::make_pair(static_cast<bool>(StartEnabled), ChannelMask); 
+		StartEnabled = (ChannelMask & 0x01) != 0;
+		return std::make_pair(static_cast<bool>(StartEnabled), ChannelMask);
 	}
 
 	void QutoolsStandardTDCHardwareAdapter::SetExposureTimeUnsafe(std::chrono::milliseconds ExposureTime) const
@@ -499,9 +499,10 @@ namespace DynExpHardware
 		CheckError(Result);
 	}
 
-	void QutoolsStandardTDCHardwareAdapter::SetChannelDelayUnsafe(ChannelType Channel, Util::picoseconds ChannelDelay) const
+	void QutoolsStandardTDCHardwareAdapter::SetChannelDelayUnsafe(ChannelType Channel, Util::picoseconds ChannelDelay) const // DIFFERENCE TO MC: The function TDC_setChannelDelay does not exist for the quTAG Standard.
 	{
-		auto Result = 0; //QutoolsTDCSyms::TDC_setChannelDelay(Channel, Util::NumToT<QutoolsTDCSyms::Int32>(ChannelDelay.count())); // Q: Different than in MC.
+		//auto Result = QutoolsTDCSyms::TDC_setChannelDelay(Channel, Util::NumToT<QutoolsTDCSyms::Int32>(ChannelDelay.count()));
+		auto Result = 0;
 		CheckError(Result);
 	}
 
@@ -514,17 +515,18 @@ namespace DynExpHardware
 	}
 
 	void QutoolsStandardTDCHardwareAdapter::ConfigureSignalConditioningUnsafe(ChannelType Channel,
-		QutoolsTDCSyms::TDC_SignalCond Conditioning,bool UseRisingEdge, double ThresholdInVolts) const
+		QutoolsTDCSyms::TDC_SignalCond Conditioning, bool UseRisingEdge, double ThresholdInVolts) const
 	{
 		auto Result = QutoolsTDCSyms::TDC_configureSignalConditioning(Channel, Conditioning, UseRisingEdge, ThresholdInVolts); // channel 0 = start as for MC?
 		CheckError(Result);
 	}
 
 	void QutoolsStandardTDCHardwareAdapter::ConfigureFilterUnsafe(ChannelType Channel,
-		QutoolsTDCSyms::TDC_FilterType FilterType, QutoolsTDCSyms::Int32 ChannelMask) const
+		QutoolsTDCSyms::TDC_FilterType FilterType, QutoolsTDCSyms::Int32 ChannelMask) const // DIFFERENCE TO MC: Setting the filters is a monetary feature. For our T010175, e.g. we did not buy it.
 	{
-		auto Result = QutoolsTDCSyms::TDC_configureFilter(Channel + 1, FilterType, ChannelMask); // Q: It is not clear to me, why the output is always 14 (	Requested feature is not available.).
-		//CheckError(Result); // Q: Out-commented for now...
+		// auto Result = QutoolsTDCSyms::TDC_configureFilter(Channel + 1, FilterType, ChannelMask); // If the feature is not available, the output is always 14 (Requested feature is not available.).
+		auto Result = 0;
+		CheckError(Result);
 	}
 
 	void QutoolsStandardTDCHardwareAdapter::EnableHBTUnsafe(bool Enable) const

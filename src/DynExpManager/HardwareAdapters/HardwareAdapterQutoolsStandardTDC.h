@@ -183,7 +183,7 @@ namespace DynExpHardware
 
 		void AddressThisTDCDeviceUnsafe() const;
 		void ReadTimestampsUnsafe() const;
-		void EnableChannelsUnsafe(bool EnableStartChannel, QutoolsTDCSyms::Int32 ChannelMask) const;
+		void EnableChannelsUnsafe(QutoolsTDCSyms::Int32 ChannelMask) const; // DIFFERENCE TO MC: The quTAG Standard treats the start channel as channel 0.
 		std::pair<bool, QutoolsTDCSyms::Int32> GetEnabledChannelsUnsafe() const;
 		void SetExposureTimeUnsafe(std::chrono::milliseconds ExposureTime) const;
 		void SetCoincidenceWindowUnsafe(ValueType CoincidenceWindow) const;
