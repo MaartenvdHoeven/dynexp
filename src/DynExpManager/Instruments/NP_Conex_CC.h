@@ -38,6 +38,11 @@ namespace DynExpInstr
 			virtual void UpdateFuncImpl(dispatch_tag<UpdateTask>, DynExp::InstrumentInstance& Instance) {}
 		};
 
+		class WaitingTask final : public DynExp::TaskBase
+		{
+			virtual DynExp::TaskResultType RunChild(DynExp::InstrumentInstance& Instance) override;
+		};
+
 		class SetHomeTask final : public DynExp::TaskBase
 		{
 			virtual DynExp::TaskResultType RunChild(DynExp::InstrumentInstance& Instance) override;
@@ -112,31 +117,54 @@ namespace DynExpInstr
 	public:
 		struct Conex_CCStatusType
 		{
-			constexpr void Set(uint8_t ByteCode) noexcept { this->ByteCode = ByteCode; }
+			constexpr void Set(uint8_t byteCode) noexcept { ByteCode = byteCode; }
 
-			constexpr bool Busy() const noexcept { return ByteCode & (1 << 0); }
-			constexpr bool CommandError() const noexcept { return ByteCode & (1 << 1); }
-			constexpr bool TrajectoryComplete() const noexcept { return ByteCode & (1 << 2); }
-			constexpr bool IndexPulseReceived() const noexcept { return ByteCode & (1 << 3); }
-			constexpr bool PositionLimitExceeded() const noexcept { return ByteCode & (1 << 4); }
-			constexpr bool ExcessivePositionError() const noexcept { return ByteCode & (1 << 5); }
-			constexpr bool BreakpointReached() const noexcept { return ByteCode & (1 << 6); }
-			constexpr bool MotorLoopOff() const noexcept { return ByteCode & (1 << 7); }
+			// NOT REFERENCED STATES
+			constexpr bool NotReferencedFromReset() const noexcept { return ByteCode == 0x0A; }
+			constexpr bool NotReferencedFromHoming() const noexcept { return ByteCode == 0x0B; }
+			constexpr bool NotReferencedFromConfiguration() const noexcept { return ByteCode == 0x0C; }
+			constexpr bool NotReferencedFromDisable() const noexcept { return ByteCode == 0x0D; }
+			constexpr bool NotReferencedFromReady() const noexcept { return ByteCode == 0x0E; }
+			constexpr bool NotReferencedFromMoving() const noexcept { return ByteCode == 0x0F; }
+			constexpr bool NotReferencedNoParams() const noexcept { return ByteCode == 0x10; }
+
+			// CONFIGURATION
+			constexpr bool Configuration() const noexcept { return ByteCode == 0x14; }
+
+			// HOMING
+			constexpr bool Homing() const noexcept { return ByteCode == 0x1E; }
+
+			// MOVING
+			constexpr bool Moving() const noexcept { return ByteCode == 0x28; }
+
+			// READY STATES
+			constexpr bool ReadyFromHoming() const noexcept { return ByteCode == 0x32; }
+			constexpr bool ReadyFromMoving() const noexcept { return ByteCode == 0x33; }
+			constexpr bool ReadyFromDisable() const noexcept { return ByteCode == 0x34; }
+
+			// READY T STATES
+			constexpr bool ReadyTFromReady() const noexcept { return ByteCode == 0x36; }
+			constexpr bool ReadyTFromTracking() const noexcept { return ByteCode == 0x37; }
+			constexpr bool ReadyTFromDisableT() const noexcept { return ByteCode == 0x38; }
+
+			// DISABLE STATES
+			constexpr bool DisableFromReady() const noexcept { return ByteCode == 0x3C; }
+			constexpr bool DisableFromMoving() const noexcept { return ByteCode == 0x3D; }
+			constexpr bool DisableFromTracking() const noexcept { return ByteCode == 0x3E; }
+			constexpr bool DisableFromReadyT() const noexcept { return ByteCode == 0x3F; }
+
+			// TRACKING STATES
+			constexpr bool TrackingFromReadyT() const noexcept { return ByteCode == 0x46; }
+			constexpr bool TrackingFromTracking() const noexcept { return ByteCode == 0x47; }
 
 		private:
 			uint8_t ByteCode = 0;
 		};
 
+
 		enum ErrorCodeType : uint8_t {
 			NoError,
-			CommandNotFound,
-			FirstCommandCharacterWasNotALetter,
-			CharacterFollowingCommandWasNotADigit = 5,
-			ValueTooLarge,
-			ValueTooSmall,
-			ContinuationCharacterWasNotAComma,
-			CommandBufferOverflow,
-			MacroStorageOverflow
+			Error // T: Not defined yet
 		};
 
 		NP_Conex_CCStageData() = default;
@@ -208,12 +236,14 @@ namespace DynExpInstr
 
 		virtual std::string GetName() const override { return Name(); }
 
-		virtual PositionerStageData::PositionType GetMinPosition() const noexcept override { return -12455000; }
-		virtual PositionerStageData::PositionType GetMaxPosition() const noexcept override { return 12455000; }
+		virtual PositionerStageData::PositionType GetMinPosition() const noexcept override { return -180; }
+		virtual PositionerStageData::PositionType GetMaxPosition() const noexcept override { return 180; }
 		virtual PositionerStageData::PositionType GetResolution() const noexcept override { return 1000; }
 		virtual PositionerStageData::PositionType GetMinVelocity() const noexcept override { return 0; }
-		virtual PositionerStageData::PositionType GetMaxVelocity() const noexcept override { return 500000; }
-		virtual PositionerStageData::PositionType GetDefaultVelocity() const noexcept override { return 200000; }
+		virtual PositionerStageData::PositionType GetMaxVelocity() const noexcept override { return 20; }
+		virtual PositionerStageData::PositionType GetDefaultVelocity() const noexcept override { return 10; }
+
+		virtual std::chrono::milliseconds GetTaskQueueDelay() const override { return std::chrono::milliseconds(1000); } // override the time delay between runs to handle tasks
 
 		virtual void SetHome() const override { MakeAndEnqueueTask<NP_Conex_CC_Tasks::SetHomeTask>(); }
 		virtual void Reference(DirectionType Direction = DirectionType::Forward, DynExp::TaskBase::CallbackType CallbackFunc = nullptr) const override { MakeAndEnqueueTask<NP_Conex_CC_Tasks::ReferenceTask>(Direction, CallbackFunc); }
