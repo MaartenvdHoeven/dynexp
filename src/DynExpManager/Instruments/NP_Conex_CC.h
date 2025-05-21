@@ -38,7 +38,7 @@ namespace DynExpInstr
 			virtual void UpdateFuncImpl(dispatch_tag<UpdateTask>, DynExp::InstrumentInstance& Instance) {}
 		};
 
-		class WaitingTask final : public DynExp::TaskBase
+		class ResetTask final : public DynExp::TaskBase
 		{
 			virtual DynExp::TaskResultType RunChild(DynExp::InstrumentInstance& Instance) override;
 		};

@@ -99,9 +99,8 @@ namespace DynExpInstr
 				InstrData->Conex_CCStatus.Set(State);
 
 				// Ask if stage is in Ready state
-				// This is useful for two reaons. 
-				// 1. The SetHomeTask and the ReferenceTask, require the stage to be set into CONFIGURATION state. To return from this state to READY mode takes 3 s.
-				// 2. Sometimes the state jumps into a different state. If this is the case, it should go into READY state again. 
+				// Sometimes the state jumps into a different state. If this is the case, it should go into READY state again. 
+				// It can also be used to set the stage into the READY state after defining home.
 				auto Conex_CCStatus = InstrData->GetConex_CCStatus();
 				if (Conex_CCStatus.NotReferencedFromReset() || Conex_CCStatus.NotReferencedFromHoming() || Conex_CCStatus.NotReferencedFromConfiguration()
 					|| Conex_CCStatus.NotReferencedFromDisable() || Conex_CCStatus.NotReferencedFromReady() || Conex_CCStatus.NotReferencedFromMoving()
@@ -162,15 +161,26 @@ namespace DynExpInstr
 		UpdateFuncImpl(dispatch_tag<UpdateTask>(), Instance);
 	}
 
-	// 4. Set (define) home position:
+	// Reset the controller:
+	// To go from DISABLE or READY state to CONFIGURATION state, it is also needed to first reset the controller with the RS command, and then to change the controller’s state	with the PW1 command from NOT REFERENCED to CONFIGURATION.
+	DynExp::TaskResultType NP_Conex_CC_Tasks::ResetTask::RunChild(DynExp::InstrumentInstance& Instance)
+	{
+		auto InstrParams = DynExp::dynamic_Params_cast<NP_Conex_CC>(Instance.ParamsGetter());
+		auto InstrData = DynExp::dynamic_InstrumentData_cast<NP_Conex_CC>(Instance.InstrumentDataGetter());
+
+		*InstrData->HardwareAdapter << Util::ToStr(InstrParams->ConexAddress.Get()) + "RS";
+		// std::this_thread::sleep_for(std::chrono::milliseconds(500)); // This takes 500 ms.
+
+		return {};
+	}
+
+	// Set (define) home position:
+	// T: Before this function, the ResetTask should be called.
 	DynExp::TaskResultType NP_Conex_CC_Tasks::SetHomeTask::RunChild(DynExp::InstrumentInstance& Instance)
 	{
 		auto InstrParams = DynExp::dynamic_Params_cast<NP_Conex_CC>(Instance.ParamsGetter());
 		auto InstrData = DynExp::dynamic_InstrumentData_cast<NP_Conex_CC>(Instance.InstrumentDataGetter());
 
-		// Set the home search type (see InitTask), homing actually happens in the UpdateTask:
-		*InstrData->HardwareAdapter << Util::ToStr(InstrParams->ConexAddress.Get()) + "RS";
-		std::this_thread::sleep_for(std::chrono::milliseconds(500));
 		*InstrData->HardwareAdapter << Util::ToStr(InstrParams->ConexAddress.Get()) + "PW1";
 		*InstrData->HardwareAdapter << Util::ToStr(InstrParams->ConexAddress.Get()) + "HT1"; // use current position as HOME
 		*InstrData->HardwareAdapter << Util::ToStr(InstrParams->ConexAddress.Get()) + "PW0";
@@ -179,27 +189,19 @@ namespace DynExpInstr
 	}
 
 	// Find the absolute zero position:
+	// T: Before this function, the ResetTask should be called.
 	DynExp::TaskResultType NP_Conex_CC_Tasks::ReferenceTask::RunChild(DynExp::InstrumentInstance& Instance)
 	{
 		auto InstrParams = DynExp::dynamic_Params_cast<NP_Conex_CC>(Instance.ParamsGetter());
 		auto InstrData = DynExp::dynamic_InstrumentData_cast<NP_Conex_CC>(Instance.InstrumentDataGetter());
 
-		// Abort motion
-		// It is not possible to use an if-condition, since the update of the Conex_CCStatus is so slow.
-		auto AbortMotion = Util::ToStr(InstrParams->ConexAddress.Get()) + "ST";
-		*InstrData->HardwareAdapter << AbortMotion;
-		//std::this_thread::sleep_for(std::chrono::milliseconds(300)); // It takes 300 ms until the next command can be recognized. So, if this line is not used, this new task only aborts the old task but is not actually executed.
-
 		// Save current velocity (should be done before every reset command)
-		auto Owner = DynExp::dynamic_Object_cast<NP_Conex_CC>(&Instance.GetOwner()); // for GetDefaultVelocity
-		auto DefaultVelocity = Owner->GetDefaultVelocity();
-		auto TellVelocity = Util::ToStr(InstrParams->ConexAddress.Get()) + "VA?";
-		*InstrData->HardwareAdapter << TellVelocity;
+		//auto Owner = DynExp::dynamic_Object_cast<NP_Conex_CC>(&Instance.GetOwner()); // for GetDefaultVelocity
+		//auto DefaultVelocity = Owner->GetDefaultVelocity();
+		//auto TellVelocity = Util::ToStr(InstrParams->ConexAddress.Get()) + "VA?";
+		//*InstrData->HardwareAdapter << TellVelocity;
 		// auto CurrentVelocity = NP_Conex_CC::AnswerToNumberString(InstrData->HardwareAdapter->WaitForLine(1, std::chrono::milliseconds(250)), "VA"); // Q: Why does this function give an error?
 
-		// Define home (see InitTask):
-		*InstrData->HardwareAdapter << Util::ToStr(InstrParams->ConexAddress.Get()) + "RS";
-		std::this_thread::sleep_for(std::chrono::milliseconds(500));
 		*InstrData->HardwareAdapter << Util::ToStr(InstrParams->ConexAddress.Get()) + "PW1";
 		*InstrData->HardwareAdapter << Util::ToStr(InstrParams->ConexAddress.Get()) + "HT2"; // use MZ switch only
 		*InstrData->HardwareAdapter << Util::ToStr(InstrParams->ConexAddress.Get()) + "PW0";
@@ -207,7 +209,7 @@ namespace DynExpInstr
 		return {};
 	}
 
-	// 6. Set the velocity:
+	// Set the velocity:
 	DynExp::TaskResultType NP_Conex_CC_Tasks::SetVelocityTask::RunChild(DynExp::InstrumentInstance& Instance)
 	{
 		auto InstrParams = DynExp::dynamic_Params_cast<NP_Conex_CC>(Instance.ParamsGetter());
@@ -220,17 +222,11 @@ namespace DynExpInstr
 		return {};
 	}
 
-	// 7. Go to home position:
+	// Go to home position:
 	DynExp::TaskResultType NP_Conex_CC_Tasks::MoveToHomeTask::RunChild(DynExp::InstrumentInstance& Instance)
 	{
 		auto InstrParams = DynExp::dynamic_Params_cast<NP_Conex_CC>(Instance.ParamsGetter());
 		auto InstrData = DynExp::dynamic_InstrumentData_cast<NP_Conex_CC>(Instance.InstrumentDataGetter());
-
-		// Abort motion
-		// It is not possible to use an if-condition, since the update of the Conex_CCStatus is so slow.
-		auto AbortMotion = Util::ToStr(InstrParams->ConexAddress.Get()) + "ST";
-		*InstrData->HardwareAdapter << AbortMotion;
-		//std::this_thread::sleep_for(std::chrono::milliseconds(300)); // It takes 300 ms until the next command can be recognized. So, if this line is not used, this new task only aborts the old task but is not actually executed.
 
 		// Go home
 		auto GoHome = Util::ToStr(InstrParams->ConexAddress.Get()) + "PA0";
@@ -239,17 +235,11 @@ namespace DynExpInstr
 		return {};
 	}
 
-	// 8. Move to an absolute position: 
+	// Move to an absolute position: 
 	DynExp::TaskResultType NP_Conex_CC_Tasks::MoveAbsoluteTask::RunChild(DynExp::InstrumentInstance& Instance)
 	{
 		auto InstrParams = DynExp::dynamic_Params_cast<NP_Conex_CC>(Instance.ParamsGetter());
 		auto InstrData = DynExp::dynamic_InstrumentData_cast<NP_Conex_CC>(Instance.InstrumentDataGetter());
-
-		// Abort motion
-		// It is not possible to use an if-condition, since the update of the Conex_CCStatus is so slow.
-		auto AbortMotion = Util::ToStr(InstrParams->ConexAddress.Get()) + "ST";
-		*InstrData->HardwareAdapter << AbortMotion;
-		//std::this_thread::sleep_for(std::chrono::milliseconds(300)); // It takes 300 ms until the next command can be recognized. So, if this line is not used, this new task only aborts the old task but is not actually executed.
 
 		// Move absolute
 		auto MoveAbsolute = Util::ToStr(InstrParams->ConexAddress.Get()) + "PA" + Util::ToStr(Position);
@@ -258,17 +248,11 @@ namespace DynExpInstr
 		return {};
 	}
 
-	// 9. Move by a distance (to a relative position):
+	// Move by a distance (to a relative position):
 	DynExp::TaskResultType NP_Conex_CC_Tasks::MoveRelativeTask::RunChild(DynExp::InstrumentInstance& Instance)
 	{
 		auto InstrParams = DynExp::dynamic_Params_cast<NP_Conex_CC>(Instance.ParamsGetter());
 		auto InstrData = DynExp::dynamic_InstrumentData_cast<NP_Conex_CC>(Instance.InstrumentDataGetter());
-
-		// Abort motion
-		// It is not possible to use an if-condition, since the update of the Conex_CCStatus is so slow.
-		auto AbortMotion = Util::ToStr(InstrParams->ConexAddress.Get()) + "ST";
-		*InstrData->HardwareAdapter << AbortMotion;
-		//std::this_thread::sleep_for(std::chrono::milliseconds(300)); // It takes 300 ms until the next command can be recognized. So, if this line is not used, this new task only aborts the old task but is not actually executed.
 
 		// Move relative
 		auto MoveRelative = Util::ToStr(InstrParams->ConexAddress.Get()) + "PR" + Util::ToStr(Position); // Q: Why is position an integer? With this I cannot make small steps.
@@ -277,7 +261,7 @@ namespace DynExpInstr
 		return {};
 	}
 
-	// 10. Abort motion:
+	// Abort motion:
 	DynExp::TaskResultType NP_Conex_CC_Tasks::StopMotionTask::RunChild(DynExp::InstrumentInstance& Instance)
 	{
 		auto InstrParams = DynExp::dynamic_Params_cast<NP_Conex_CC>(Instance.ParamsGetter());
