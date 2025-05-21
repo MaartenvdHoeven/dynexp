@@ -417,7 +417,11 @@ namespace DynExpHardware
 		CheckError(Result);
 		this->BufferSize = BufferSize;
 
+#ifdef QUTOOLSQUTAG_VARIANT_S
+		ChannelCount = 5;
+#else
 		ChannelCount = QutoolsTDCSyms::TDC_getChannelCount();
+#endif
 
 		SetTimestampBufferSizeUnsafe(TimestampBufferSize);
 		SetExposureTimeUnsafe(ExposureTime);
@@ -538,7 +542,11 @@ namespace DynExpHardware
 		QutoolsTDCSyms::TDC_FilterType FilterType, QutoolsTDCSyms::Int32 ChannelMask) const
 	{
 		auto Result = QutoolsTDCSyms::TDC_configureFilter(Channel + 1, FilterType, ChannelMask);
-		CheckError(Result);
+
+		if (Result == TDC_NotAvailable)
+			SetWarning("The TDC_configureFilter() function is not available on this quTag device.", Util::DynExpErrorCodes::NotAvailable);
+		else
+			CheckError(Result);
 	}
 
 	void QutoolsTDCHardwareAdapter::EnableHBTUnsafe(bool Enable) const
