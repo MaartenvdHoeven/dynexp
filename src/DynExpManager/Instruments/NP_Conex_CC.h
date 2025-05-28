@@ -320,7 +320,6 @@ namespace DynExpInstr
 		virtual PositionerStageData::PositionType GetMinVelocity() const noexcept override { return 0; }
 		virtual PositionerStageData::PositionType GetMaxVelocity() const noexcept override { return 20; }
 		virtual PositionerStageData::PositionType GetDefaultVelocity() const noexcept override { return 10; }
-		virtual bool IsUsingAngularUnits() const noexcept override { return true; }
 
 		virtual std::chrono::milliseconds GetTaskQueueDelay() const override { return std::chrono::milliseconds(1000); } // override the time delay between runs to handle tasks
 
