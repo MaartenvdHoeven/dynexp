@@ -40,11 +40,36 @@ namespace DynExpInstr
 
 		class ResetTask final : public DynExp::TaskBase
 		{
+		public:
+			ResetTask(CallbackType CallbackFunc = nullptr, std::chrono::system_clock::time_point DeferUntil = {}) noexcept
+				: TaskBase(CallbackFunc, DeferUntil) {}
+
+		private:
+			virtual DynExp::TaskResultType RunChild(DynExp::InstrumentInstance& Instance) override;
+		};
+
+		class SetReadyTask final : public DynExp::TaskBase
+		{
+		public:
+			SetReadyTask(CallbackType CallbackFunc = nullptr, std::chrono::system_clock::time_point DeferUntil = {}) noexcept
+				: TaskBase(CallbackFunc, DeferUntil) {}
+
+		private:
 			virtual DynExp::TaskResultType RunChild(DynExp::InstrumentInstance& Instance) override;
 		};
 
 		class SetHomeTask final : public DynExp::TaskBase
 		{
+			virtual DynExp::TaskResultType RunChild(DynExp::InstrumentInstance& Instance) override;
+		};
+
+		class SetHomeExecutionTask final : public DynExp::TaskBase
+		{
+		public:
+			SetHomeExecutionTask(CallbackType CallbackFunc, std::chrono::system_clock::time_point DeferUntil = {}) noexcept
+				: TaskBase(CallbackFunc, DeferUntil) {}
+
+		private:
 			virtual DynExp::TaskResultType RunChild(DynExp::InstrumentInstance& Instance) override;
 		};
 
@@ -60,10 +85,22 @@ namespace DynExpInstr
 			const PositionerStage::DirectionType Direction;
 		};
 
+		class SetReferenceExecutionTask final : public DynExp::TaskBase
+		{
+		public:
+			SetReferenceExecutionTask(CallbackType CallbackFunc, std::chrono::system_clock::time_point DeferUntil = {}) noexcept
+				: TaskBase(CallbackFunc, DeferUntil) {}
+
+		private:
+			virtual DynExp::TaskResultType RunChild(DynExp::InstrumentInstance& Instance) override;
+		};
+
 		class SetVelocityTask final : public DynExp::TaskBase
 		{
 		public:
-			SetVelocityTask(PositionerStageData::PositionType Velocity) noexcept : Velocity(Velocity) {}
+			//SetVelocityTask(PositionerStageData::PositionType Velocity) noexcept : Velocity(Velocity) {}
+			SetVelocityTask(PositionerStageData::PositionType Velocity, CallbackType CallbackFunc = nullptr, std::chrono::system_clock::time_point DeferUntil = {}) noexcept
+				: TaskBase(CallbackFunc, DeferUntil), Velocity(Velocity) {}
 
 		private:
 			virtual DynExp::TaskResultType RunChild(DynExp::InstrumentInstance& Instance) override;
@@ -75,6 +112,16 @@ namespace DynExpInstr
 		{
 		public:
 			MoveToHomeTask(CallbackType CallbackFunc) noexcept : TaskBase(CallbackFunc) {}
+
+		private:
+			virtual DynExp::TaskResultType RunChild(DynExp::InstrumentInstance& Instance) override;
+		};
+
+		class MoveToHomeExecutionTask final : public DynExp::TaskBase
+		{
+		public:
+			MoveToHomeExecutionTask(CallbackType CallbackFunc, std::chrono::system_clock::time_point DeferUntil = {}) noexcept
+				: TaskBase(CallbackFunc, DeferUntil) {}
 
 		private:
 			virtual DynExp::TaskResultType RunChild(DynExp::InstrumentInstance& Instance) override;
@@ -92,6 +139,19 @@ namespace DynExpInstr
 			const PositionerStageData::PositionType Position;
 		};
 
+		class MoveAbsoluteExecutionTask final : public DynExp::TaskBase
+		{
+		public:
+			MoveAbsoluteExecutionTask(PositionerStageData::PositionType Position, CallbackType CallbackFunc, std::chrono::system_clock::time_point DeferUntil = {}) noexcept
+				: TaskBase(CallbackFunc, DeferUntil), Position(Position) {}
+
+		private:
+			virtual DynExp::TaskResultType RunChild(DynExp::InstrumentInstance& Instance) override;
+
+			const PositionerStageData::PositionType Position;
+
+		};
+
 		class MoveRelativeTask final : public DynExp::TaskBase
 		{
 		public:
@@ -104,8 +164,26 @@ namespace DynExpInstr
 			const PositionerStageData::PositionType Position;
 		};
 
+		class MoveRelativeExecutionTask final : public DynExp::TaskBase
+		{
+		public:
+			MoveRelativeExecutionTask(PositionerStageData::PositionType Position, CallbackType CallbackFunc, std::chrono::system_clock::time_point DeferUntil = {}) noexcept
+				: TaskBase(CallbackFunc, DeferUntil), Position(Position) {}
+
+		private:
+			virtual DynExp::TaskResultType RunChild(DynExp::InstrumentInstance& Instance) override;
+
+			const PositionerStageData::PositionType Position;
+
+		};
+
 		class StopMotionTask final : public DynExp::TaskBase
 		{
+		public:
+			StopMotionTask(CallbackType CallbackFunc = nullptr, std::chrono::system_clock::time_point DeferUntil = {}) noexcept
+				: TaskBase(CallbackFunc, DeferUntil) {}
+
+		private:
 			virtual DynExp::TaskResultType RunChild(DynExp::InstrumentInstance& Instance) override;
 		};
 	}
@@ -199,7 +277,7 @@ namespace DynExpInstr
 		Param<DynExp::ObjectLink<DynExp::SerialCommunicationHardwareAdapter>> HardwareAdapter = { *this, GetCore().GetHardwareAdapterManager(),
 			"HardwareAdapter", "Serial port", "Underlying hardware adapter of this instrument", DynExpUI::Icons::HardwareAdapter };
 		Param<ParamsConfigDialog::TextType> ConexAddress = { *this, "ConexAddress", "Conex address",
-			"Address (1-31) of the Conex controller to be used", true, "0" }; // T: NumberType instead of TextType. Die Grenzen von 1-31 sollten auch tatsächlich gesetzt werden. Wie z.B. in WidefieldMicroscope.h "	Param<ParamsConfigDialog::NumberType> WidefieldHBTTransitionTime = { *this, "WidefieldHBTTransitionTime", "HBT flip mirror transition time (ms)", "Time it takes to flip the HBT mirror once the duty cycle of the rectangular pulses applied to the flip mirror servo actuator has changed", false, 500, 0, 10000, 10, 0}; "
+			"Address (1-31) of the Conex controller to be used", true, "0" }; // T: NumberType instead of TextType. Die Grenzen von 1-31 sollten auch tatsaechlich gesetzt werden. Wie z.B. in WidefieldMicroscope.h "	Param<ParamsConfigDialog::NumberType> WidefieldHBTTransitionTime = { *this, "WidefieldHBTTransitionTime", "HBT flip mirror transition time (ms)", "Time it takes to flip the HBT mirror once the duty cycle of the rectangular pulses applied to the flip mirror servo actuator has changed", false, 500, 0, 10000, 10, 0}; "
 
 
 	private:
@@ -242,6 +320,7 @@ namespace DynExpInstr
 		virtual PositionerStageData::PositionType GetMinVelocity() const noexcept override { return 0; }
 		virtual PositionerStageData::PositionType GetMaxVelocity() const noexcept override { return 20; }
 		virtual PositionerStageData::PositionType GetDefaultVelocity() const noexcept override { return 10; }
+		virtual bool IsUsingAngularUnits() const noexcept override { return true; }
 
 		virtual std::chrono::milliseconds GetTaskQueueDelay() const override { return std::chrono::milliseconds(1000); } // override the time delay between runs to handle tasks
 
