@@ -24,7 +24,7 @@ namespace DynExpInstr
 			*InstrData->HardwareAdapter << Util::ToStr(InstrParams->ConexAddress.Get()) + "HT1"; // Set current position to home position.
 			*InstrData->HardwareAdapter << Util::ToStr(InstrParams->ConexAddress.Get()) + "PW0"; // Go to NOT REFERENCED state.
 			std::this_thread::sleep_for(std::chrono::seconds(3)); // This takes 3 s.
-			*InstrData->HardwareAdapter << Util::ToStr(InstrParams->ConexAddress.Get()) + "OR"; // Got to READY state.
+			*InstrData->HardwareAdapter << Util::ToStr(InstrParams->ConexAddress.Get()) + "OR"; // Go to READY state.
 
 		} // InstrParams and InstrData unlocked here.
 
@@ -112,7 +112,6 @@ namespace DynExpInstr
 					auto DefaultVelocity = Owner->GetDefaultVelocity();
 					auto TellVelocity = Util::ToStr(InstrParams->ConexAddress.Get()) + "VA?";
 					*InstrData->HardwareAdapter << TellVelocity;
-					// auto CurrentVelocity = NP_Conex_CC::AnswerToNumberString(InstrData->HardwareAdapter->WaitForLine(1, std::chrono::milliseconds(250)), "VA"); // Q: Why does this function give an error?
 					InstrData->EnqueuePriorityTask(DynExp::MakeTask<NP_Conex_CC_Tasks::SetVelocityTask>(DefaultVelocity));
 					InstrData->EnqueuePriorityTask(DynExp::MakeTask<NP_Conex_CC_Tasks::SetReadyTask>());
 				}
@@ -214,15 +213,8 @@ namespace DynExpInstr
 		auto InstrParams = DynExp::dynamic_Params_cast<NP_Conex_CC>(Instance.ParamsGetter());
 		auto InstrData = DynExp::dynamic_InstrumentData_cast<NP_Conex_CC>(Instance.InstrumentDataGetter());
 
-		// Save current velocity (should be done before every reset command)
-		auto Owner = DynExp::dynamic_Object_cast<NP_Conex_CC>(&Instance.GetOwner()); // for GetDefaultVelocity
-		auto DefaultVelocity = Owner->GetDefaultVelocity();
-		auto TellVelocity = Util::ToStr(InstrParams->ConexAddress.Get()) + "VA?";
-		*InstrData->HardwareAdapter << TellVelocity;
-		// auto CurrentVelocity = NP_Conex_CC::AnswerToNumberString(InstrData->HardwareAdapter->WaitForLine(1, std::chrono::milliseconds(250)), "VA"); // Q: Why does this function give an error?
-
 		*InstrData->HardwareAdapter << Util::ToStr(InstrParams->ConexAddress.Get()) + "PW1";
-		*InstrData->HardwareAdapter << Util::ToStr(InstrParams->ConexAddress.Get()) + "VA" + Util::ToStr(DefaultVelocity);
+		*InstrData->HardwareAdapter << Util::ToStr(InstrParams->ConexAddress.Get()) + "VA" + Util::ToStr(InstrData->GetVelocity());
 		*InstrData->HardwareAdapter << Util::ToStr(InstrParams->ConexAddress.Get()) + "HT1"; // use current position as HOME
 		*InstrData->HardwareAdapter << Util::ToStr(InstrParams->ConexAddress.Get()) + "PW0"; // this takes 3 s.
 
@@ -253,15 +245,10 @@ namespace DynExpInstr
 		auto InstrParams = DynExp::dynamic_Params_cast<NP_Conex_CC>(Instance.ParamsGetter());
 		auto InstrData = DynExp::dynamic_InstrumentData_cast<NP_Conex_CC>(Instance.InstrumentDataGetter());
 
-		// Save current velocity (should be done before every reset command)
-		auto Owner = DynExp::dynamic_Object_cast<NP_Conex_CC>(&Instance.GetOwner()); // for GetDefaultVelocity
-		auto DefaultVelocity = Owner->GetDefaultVelocity();
-		auto TellVelocity = Util::ToStr(InstrParams->ConexAddress.Get()) + "VA?";
-		*InstrData->HardwareAdapter << TellVelocity;
-		// auto CurrentVelocity = NP_Conex_CC::AnswerToNumberString(InstrData->HardwareAdapter->WaitForLine(1, std::chrono::milliseconds(250)), "VA"); // Q: Why does this function give an error?
+		auto CurrentVelocity = InstrData->GetVelocity();
 
 		*InstrData->HardwareAdapter << Util::ToStr(InstrParams->ConexAddress.Get()) + "PW1";
-		*InstrData->HardwareAdapter << Util::ToStr(InstrParams->ConexAddress.Get()) + "VA" + Util::ToStr(DefaultVelocity);
+		*InstrData->HardwareAdapter << Util::ToStr(InstrParams->ConexAddress.Get()) + "VA" + Util::ToStr(CurrentVelocity);
 		*InstrData->HardwareAdapter << Util::ToStr(InstrParams->ConexAddress.Get()) + "HT2"; // use current position as HOME
 		*InstrData->HardwareAdapter << Util::ToStr(InstrParams->ConexAddress.Get()) + "PW0"; // this takes 3 s.
 
