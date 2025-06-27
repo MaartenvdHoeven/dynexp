@@ -5,6 +5,7 @@
 
 namespace DynExpInstr
 {
+
 	// Initialize:
 	// This function is called, when the Instrument is started in DynExp.
 	void NP_Conex_CC_Tasks::InitTask::InitFuncImpl(dispatch_tag<PositionerStageTasks::InitTask>, DynExp::InstrumentInstance& Instance)
@@ -62,6 +63,7 @@ namespace DynExpInstr
 		{
 			auto InstrParams = DynExp::dynamic_Params_cast<NP_Conex_CC>(Instance.ParamsGetter());
 			auto InstrData = DynExp::dynamic_InstrumentData_cast<NP_Conex_CC>(Instance.InstrumentDataGetter());
+			auto Owner = DynExp::dynamic_Object_cast<NP_Conex_CC>(&Instance.GetOwner());
 			bool UpdateError = false;
 
 			try
@@ -108,7 +110,6 @@ namespace DynExpInstr
 					|| Conex_CCStatus.TrackingFromReadyT() || Conex_CCStatus.TrackingFromTracking())
 				{
 					// Save current velocity (should be done before every reset command)
-					auto Owner = DynExp::dynamic_Object_cast<NP_Conex_CC>(&Instance.GetOwner()); // for GetDefaultVelocity
 					auto DefaultVelocity = Owner->GetDefaultVelocity();
 					auto TellVelocity = Util::ToStr(InstrParams->ConexAddress.Get()) + "VA?";
 					*InstrData->HardwareAdapter << TellVelocity;
@@ -120,13 +121,16 @@ namespace DynExpInstr
 				auto TellPosition = Util::ToStr(InstrParams->ConexAddress.Get()) + "TP";
 				*InstrData->HardwareAdapter << TellPosition; // The output will be something like '1TP10.0000164'.
 				auto PositionalAnswer = NP_Conex_CC::AnswerToNumberString(InstrData->HardwareAdapter->WaitForLine(1, std::chrono::milliseconds(25)), "TP"); // The time to wait has to be at least 250 ms. Otherwise the answer has not been send yet. But then the stage always loses connection. If I set it to 25, it works, since eventually, it will read out the correct position from any previous answer. AnswerToNumberString will just throw some errors.
-				InstrData->SetCurrentPosition(Util::StrToT<PositionerStageData::PositionType>(PositionalAnswer));
+				double CurrentPosition = Util::StrToT<double>(PositionalAnswer) * Owner->GetFloatToIntConversion();
+				InstrData->SetCurrentPosition(Util::NumToT<PositionerStageData::PositionType>(CurrentPosition));
 
 				// Tell programmed velocity
 				auto TellVelocity = Util::ToStr(InstrParams->ConexAddress.Get()) + "VA?";
 				*InstrData->HardwareAdapter << TellVelocity; // The output will be something like '1VA10'.
 				auto VelocityAnswer = NP_Conex_CC::AnswerToNumberString(InstrData->HardwareAdapter->WaitForLine(1, std::chrono::milliseconds(25)), "VA");
-				InstrData->SetVelocity(Util::StrToT<PositionerStageData::PositionType>(VelocityAnswer));
+				double CurrentVelocity = Util::StrToT<double>(VelocityAnswer) * Owner->GetFloatToIntConversion();
+				auto DisplayedVelocity = Util::NumToT<PositionerStageData::PositionType>(CurrentVelocity);
+				InstrData->SetVelocity(DisplayedVelocity);
 			}
 
 			catch ([[maybe_unused]] const Util::InvalidDataException& e)
@@ -212,9 +216,10 @@ namespace DynExpInstr
 	{
 		auto InstrParams = DynExp::dynamic_Params_cast<NP_Conex_CC>(Instance.ParamsGetter());
 		auto InstrData = DynExp::dynamic_InstrumentData_cast<NP_Conex_CC>(Instance.InstrumentDataGetter());
+		auto Owner = DynExp::dynamic_Object_cast<NP_Conex_CC>(&Instance.GetOwner());
 
 		*InstrData->HardwareAdapter << Util::ToStr(InstrParams->ConexAddress.Get()) + "PW1";
-		*InstrData->HardwareAdapter << Util::ToStr(InstrParams->ConexAddress.Get()) + "VA" + Util::ToStr(InstrData->GetVelocity());
+		*InstrData->HardwareAdapter << Util::ToStr(InstrParams->ConexAddress.Get()) + "VA" + Util::ToStr(InstrData->GetVelocity() / Owner->GetFloatToIntConversion());
 		*InstrData->HardwareAdapter << Util::ToStr(InstrParams->ConexAddress.Get()) + "HT1"; // use current position as HOME
 		*InstrData->HardwareAdapter << Util::ToStr(InstrParams->ConexAddress.Get()) + "PW0"; // this takes 3 s.
 
@@ -244,11 +249,12 @@ namespace DynExpInstr
 	{
 		auto InstrParams = DynExp::dynamic_Params_cast<NP_Conex_CC>(Instance.ParamsGetter());
 		auto InstrData = DynExp::dynamic_InstrumentData_cast<NP_Conex_CC>(Instance.InstrumentDataGetter());
+		auto Owner = DynExp::dynamic_Object_cast<NP_Conex_CC>(&Instance.GetOwner());
 
 		auto CurrentVelocity = InstrData->GetVelocity();
 
 		*InstrData->HardwareAdapter << Util::ToStr(InstrParams->ConexAddress.Get()) + "PW1";
-		*InstrData->HardwareAdapter << Util::ToStr(InstrParams->ConexAddress.Get()) + "VA" + Util::ToStr(CurrentVelocity);
+		*InstrData->HardwareAdapter << Util::ToStr(InstrParams->ConexAddress.Get()) + "VA" + Util::ToStr(CurrentVelocity / Owner->GetFloatToIntConversion());
 		*InstrData->HardwareAdapter << Util::ToStr(InstrParams->ConexAddress.Get()) + "HT2"; // use current position as HOME
 		*InstrData->HardwareAdapter << Util::ToStr(InstrParams->ConexAddress.Get()) + "PW0"; // this takes 3 s.
 
@@ -260,9 +266,11 @@ namespace DynExpInstr
 	{
 		auto InstrParams = DynExp::dynamic_Params_cast<NP_Conex_CC>(Instance.ParamsGetter());
 		auto InstrData = DynExp::dynamic_InstrumentData_cast<NP_Conex_CC>(Instance.InstrumentDataGetter());
+		auto Owner = DynExp::dynamic_Object_cast<NP_Conex_CC>(&Instance.GetOwner());
+
 
 		// Set velocity
-		auto SetVelocity = Util::ToStr(InstrParams->ConexAddress.Get()) + "VA" + Util::ToStr(Velocity);
+		auto SetVelocity = Util::ToStr(InstrParams->ConexAddress.Get()) + "VA" + Util::ToStr(Velocity / Owner->GetFloatToIntConversion());
 		*InstrData->HardwareAdapter << SetVelocity;
 
 		return {};
@@ -314,9 +322,10 @@ namespace DynExpInstr
 	{
 		auto InstrParams = DynExp::dynamic_Params_cast<NP_Conex_CC>(Instance.ParamsGetter());
 		auto InstrData = DynExp::dynamic_InstrumentData_cast<NP_Conex_CC>(Instance.InstrumentDataGetter());
+		auto Owner = DynExp::dynamic_Object_cast<NP_Conex_CC>(&Instance.GetOwner());
 
 		// Move absolute
-		auto MoveAbsolute = Util::ToStr(InstrParams->ConexAddress.Get()) + "PA" + Util::ToStr(Position);
+		auto MoveAbsolute = Util::ToStr(InstrParams->ConexAddress.Get()) + "PA" + Util::ToStr(Position / Owner->GetFloatToIntConversion());
 		*InstrData->HardwareAdapter << MoveAbsolute;
 
 		return {};
@@ -341,9 +350,11 @@ namespace DynExpInstr
 	{
 		auto InstrParams = DynExp::dynamic_Params_cast<NP_Conex_CC>(Instance.ParamsGetter());
 		auto InstrData = DynExp::dynamic_InstrumentData_cast<NP_Conex_CC>(Instance.InstrumentDataGetter());
+		auto Owner = DynExp::dynamic_Object_cast<NP_Conex_CC>(&Instance.GetOwner());
+
 
 		// Move relative
-		auto MoveRelative = Util::ToStr(InstrParams->ConexAddress.Get()) + "PR" + Util::ToStr(Position); // Q: Why is position an integer? With this I cannot make small steps.
+		auto MoveRelative = Util::ToStr(InstrParams->ConexAddress.Get()) + "PR" + Util::ToStr(Position / Owner->GetFloatToIntConversion()); // Q: Why is position an integer? With this I cannot make small steps.
 		*InstrData->HardwareAdapter << MoveRelative;
 
 		return {};
@@ -406,9 +417,7 @@ namespace DynExpInstr
 			throw Util::InvalidDataException("Received an unexpected answer.");
 
 		auto TmpReturnValue = Answer.substr(Pos + 2);
-		auto TmpReturnValueType = typeid(TmpReturnValue).name();
-
-		return Answer.substr(Pos + 2);
+		return TmpReturnValue;
 	}
 
 	NP_Conex_CC::NP_Conex_CC(const std::thread::id OwnerThreadID, DynExp::ParamsBasePtrType&& Params)

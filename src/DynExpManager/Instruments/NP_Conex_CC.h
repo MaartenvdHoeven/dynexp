@@ -314,12 +314,14 @@ namespace DynExpInstr
 
 		virtual std::string GetName() const override { return Name(); }
 
-		virtual PositionerStageData::PositionType GetMinPosition() const noexcept override { return -180; }
-		virtual PositionerStageData::PositionType GetMaxPosition() const noexcept override { return 180; }
-		virtual PositionerStageData::PositionType GetResolution() const noexcept override { return 1000; }
+		virtual PositionerStageData::PositionType GetMinPosition() const noexcept override { return -180e6; }
+		virtual PositionerStageData::PositionType GetMaxPosition() const noexcept override { return 180e6; }
+		virtual PositionerStageData::PositionType GetResolution() const noexcept override { return 1; }
 		virtual PositionerStageData::PositionType GetMinVelocity() const noexcept override { return 0; }
-		virtual PositionerStageData::PositionType GetMaxVelocity() const noexcept override { return 20; }
-		virtual PositionerStageData::PositionType GetDefaultVelocity() const noexcept override { return 10; }
+		virtual PositionerStageData::PositionType GetMaxVelocity() const noexcept override { return 1e17; }
+		virtual PositionerStageData::PositionType GetDefaultVelocity() const noexcept override { return 10e6; }
+		
+		virtual double GetFloatToIntConversion() const noexcept { return 1e6; }
 
 		virtual std::chrono::milliseconds GetTaskQueueDelay() const override { return std::chrono::milliseconds(1000); } // override the time delay between runs to handle tasks
 
