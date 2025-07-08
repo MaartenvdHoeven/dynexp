@@ -13,7 +13,7 @@
 
 namespace DynExpInstr
 {
-	class NP_Conex_CC; // forward declaration
+	class NP_Conex_CC;
 
 	namespace NP_Conex_CC_Tasks
 	{
@@ -98,7 +98,6 @@ namespace DynExpInstr
 		class SetVelocityTask final : public DynExp::TaskBase
 		{
 		public:
-			//SetVelocityTask(PositionerStageData::PositionType Velocity) noexcept : Velocity(Velocity) {}
 			SetVelocityTask(PositionerStageData::PositionType Velocity, CallbackType CallbackFunc = nullptr, std::chrono::system_clock::time_point DeferUntil = {}) noexcept
 				: TaskBase(CallbackFunc, DeferUntil), Velocity(Velocity) {}
 
@@ -276,9 +275,8 @@ namespace DynExpInstr
 
 		Param<DynExp::ObjectLink<DynExp::SerialCommunicationHardwareAdapter>> HardwareAdapter = { *this, GetCore().GetHardwareAdapterManager(),
 			"HardwareAdapter", "Serial port", "Underlying hardware adapter of this instrument", DynExpUI::Icons::HardwareAdapter };
-		Param<ParamsConfigDialog::TextType> ConexAddress = { *this, "ConexAddress", "Conex address",
-			"Address (1-31) of the Conex controller to be used", true, "0" }; // T: NumberType instead of TextType. Die Grenzen von 1-31 sollten auch tatsaechlich gesetzt werden. Wie z.B. in WidefieldMicroscope.h "	Param<ParamsConfigDialog::NumberType> WidefieldHBTTransitionTime = { *this, "WidefieldHBTTransitionTime", "HBT flip mirror transition time (ms)", "Time it takes to flip the HBT mirror once the duty cycle of the rectangular pulses applied to the flip mirror servo actuator has changed", false, 500, 0, 10000, 10, 0}; "
-
+		Param<ParamsConfigDialog::NumberType> ConexAddress = { *this, "ConexAddress", "Conex address",
+			"Address (1-31) of the Conex controller to be used", true, 1, 31 };
 
 	private:
 		void ConfigureParamsImpl(dispatch_tag<PositionerStageParams>) override final { ConfigureParamsImpl(dispatch_tag<NP_Conex_CC_Params>()); }
@@ -307,7 +305,7 @@ namespace DynExpInstr
 
 		static std::string AnswerToNumberString(std::string&& Answer, const char* StartCode);
 
-		constexpr static auto Name() noexcept { return "NP Conex-CC"; } // A static function defines the name that appears in the dropdown menu of the GUI.
+		constexpr static auto Name() noexcept { return "NP Conex-CC"; }
 
 		NP_Conex_CC(const std::thread::id OwnerThreadID, DynExp::ParamsBasePtrType&& Params);
 		virtual ~NP_Conex_CC() {}
@@ -320,10 +318,9 @@ namespace DynExpInstr
 		virtual PositionerStageData::PositionType GetMinVelocity() const noexcept override { return 0; }
 		virtual PositionerStageData::PositionType GetMaxVelocity() const noexcept override { return 1e17; }
 		virtual PositionerStageData::PositionType GetDefaultVelocity() const noexcept override { return 10e6; }
-		
-		virtual double GetFloatToIntConversion() const noexcept { return 1e6; }
+		virtual double GetFloatToIntConversion() const noexcept { return 1e6; } // the controller expects a float as position with 6 digits of precision
 
-		virtual std::chrono::milliseconds GetTaskQueueDelay() const override { return std::chrono::milliseconds(1000); } // override the time delay between runs to handle tasks
+		virtual std::chrono::milliseconds GetTaskQueueDelay() const override { return std::chrono::milliseconds(1000); }
 
 		virtual void SetHome() const override { MakeAndEnqueueTask<NP_Conex_CC_Tasks::SetHomeTask>(); }
 		virtual void Reference(DirectionType Direction = DirectionType::Forward, DynExp::TaskBase::CallbackType CallbackFunc = nullptr) const override { MakeAndEnqueueTask<NP_Conex_CC_Tasks::ReferenceTask>(Direction, CallbackFunc); }
