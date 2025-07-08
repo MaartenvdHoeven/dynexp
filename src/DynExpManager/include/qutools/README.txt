@@ -12,3 +12,4 @@ Put the following files in ../../../../vendor/
 * libusb0.dll (Windows)
 * libwinpthread-1.dll (Windows)
 * FTD3XX.dll (Windows, quTAG Standard only)
+
