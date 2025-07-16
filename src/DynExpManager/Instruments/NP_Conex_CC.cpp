@@ -23,7 +23,6 @@ namespace DynExpInstr
 			*InstrData->HardwareAdapter << Util::ToStr(InstrParams->ConexAddress.Get()) + "PW0"; // Go to NOT REFERENCED state.
 			std::this_thread::sleep_for(std::chrono::seconds(3)); // This takes 3 s.
 			*InstrData->HardwareAdapter << Util::ToStr(InstrParams->ConexAddress.Get()) + "OR"; // Go to READY state.
-
 		}
 
 		InitFuncImpl(dispatch_tag<InitTask>(), Instance);
@@ -70,28 +69,18 @@ namespace DynExpInstr
 				char ErrorMapBuffer[5]{ 0 };  // 4 characters + 1 for null terminator
 				StatusStream.read(ErrorMapBuffer, 4);  // Read the first 4 characters
 				std::istringstream ErrorMapStream(ErrorMapBuffer);
-				int tempErrorMap;
-				ErrorMapStream >> std::hex >> tempErrorMap;
-				ErrorMap = static_cast<uint16_t>(tempErrorMap);
-
-				if (ErrorMap > 0xFFFF) // Validate that it fits in 16 bits
-					throw Util::InvalidDataException("Received an unexpected Conex-CC error map.");
-				InstrData->ErrorCode = static_cast<NP_Conex_CCStageData::ErrorCodeType>(ErrorMap); // Only 0 is no error
+				ErrorMapStream >> std::hex >> ErrorMap;
+				InstrData->ErrorCode = static_cast<NP_Conex_CC_StageData::ErrorCodeType>(ErrorMap); // Only 0 is no error
 
 				uint8_t State;     // Variable to hold the state (8 bits)
 				char StateBuffer[3]{ 0 };  // 2 characters + 1 for null terminator
 				StatusStream.read(StateBuffer, 2);  // Read the next 2 characters
 				std::istringstream StateStream(StateBuffer);
-				int tempState;
-				StateStream >> std::hex >> tempState;
-				State = static_cast<uint8_t>(tempState);
-
-				if (State > 0xFF) // Validate that it fits in 8 bits
-					throw Util::InvalidDataException("Received an unexpected Conex-CC status.");
+				StateStream >> std::hex >> State;
 				InstrData->Conex_CCStatus.Set(State);
 
-				// Check if stage is in READY state. If not, set it to READY.
 				auto Conex_CCStatus = InstrData->GetConex_CCStatus();
+				// Check if stage is in READY state. If not, set it to READY:
 				if (Conex_CCStatus.NotReferencedFromReset() || Conex_CCStatus.NotReferencedFromHoming() || Conex_CCStatus.NotReferencedFromConfiguration()
 					|| Conex_CCStatus.NotReferencedFromDisable() || Conex_CCStatus.NotReferencedFromReady() || Conex_CCStatus.NotReferencedFromMoving()
 					|| Conex_CCStatus.NotReferencedNoParams() || Conex_CCStatus.Configuration() || Conex_CCStatus.DisableFromReady()
@@ -99,9 +88,9 @@ namespace DynExpInstr
 					|| Conex_CCStatus.TrackingFromReadyT() || Conex_CCStatus.TrackingFromTracking())
 				{
 					*InstrData->HardwareAdapter << Util::ToStr(InstrParams->ConexAddress.Get()) + "VA?";
-					// 2.
+					// 2. Set default velocity.
 					InstrData->EnqueuePriorityTask(DynExp::MakeTask<NP_Conex_CC_Tasks::SetVelocityTask>(Owner->GetDefaultVelocity()));
-					// 1.
+					// 1. The stage is set to READY state, before the velocity is set to the default velocity:
 					InstrData->EnqueuePriorityTask(DynExp::MakeTask<NP_Conex_CC_Tasks::SetReadyTask>());
 				}
 
@@ -214,7 +203,7 @@ namespace DynExpInstr
 		InstrData->EnqueuePriorityTask(DynExp::MakeTask<NP_Conex_CC_Tasks::SetReadyTask>(nullptr,
 			std::chrono::system_clock::now() + std::chrono::milliseconds(3000)));
 		// 2. 
-		InstrData->EnqueuePriorityTask(DynExp::MakeTask<NP_Conex_CC_Tasks::SetReferenceExecutionTask>(nullptr,
+		InstrData->EnqueuePriorityTask(DynExp::MakeTask<NP_Conex_CC_Tasks::ReferenceExecutionTask>(nullptr,
 			std::chrono::system_clock::now() + std::chrono::milliseconds(500)));
 		// 1.
 		InstrData->EnqueuePriorityTask(DynExp::MakeTask<NP_Conex_CC_Tasks::ResetTask>());
@@ -222,7 +211,7 @@ namespace DynExpInstr
 		return {};
 	}
 
-	DynExp::TaskResultType NP_Conex_CC_Tasks::SetReferenceExecutionTask::RunChild(DynExp::InstrumentInstance& Instance)
+	DynExp::TaskResultType NP_Conex_CC_Tasks::ReferenceExecutionTask::RunChild(DynExp::InstrumentInstance& Instance)
 	{
 		auto InstrParams = DynExp::dynamic_Params_cast<NP_Conex_CC>(Instance.ParamsGetter());
 		auto InstrData = DynExp::dynamic_InstrumentData_cast<NP_Conex_CC>(Instance.InstrumentDataGetter());
@@ -329,27 +318,27 @@ namespace DynExpInstr
 		return DynExp::TaskResultType();
 	}
 
-	void NP_Conex_CCStageData::ResetImpl(dispatch_tag<PositionerStageData>)
+	void NP_Conex_CC_StageData::ResetImpl(dispatch_tag<PositionerStageData>)
 	{
 		Conex_CCStatus.Set(0);
 		ErrorCode = NoError;
 		NumFailedStatusUpdateAttempts = 0;
 
-		ResetImpl(dispatch_tag<NP_Conex_CCStageData>());
+		ResetImpl(dispatch_tag<NP_Conex_CC_StageData>());
 	}
 
-	bool NP_Conex_CCStageData::IsMovingChild() const noexcept
+	bool NP_Conex_CC_StageData::IsMovingChild() const noexcept
 	{
 		return Conex_CCStatus.Moving() || Conex_CCStatus.Homing();
 	}
 
-	bool NP_Conex_CCStageData::HasArrivedChild() const noexcept
+	bool NP_Conex_CC_StageData::HasArrivedChild() const noexcept
 	{
 		return Conex_CCStatus.ReadyFromHoming() || Conex_CCStatus.ReadyFromMoving() || Conex_CCStatus.ReadyFromDisable()
 			|| Conex_CCStatus.ReadyTFromReady() || Conex_CCStatus.ReadyTFromTracking() || Conex_CCStatus.ReadyTFromDisableT();
 	}
 
-	bool NP_Conex_CCStageData::HasFailedChild() const noexcept
+	bool NP_Conex_CC_StageData::HasFailedChild() const noexcept
 	{
 		return ErrorCode != 0
 			|| Conex_CCStatus.NotReferencedFromReset() || Conex_CCStatus.NotReferencedFromHoming() || Conex_CCStatus.NotReferencedFromConfiguration()
