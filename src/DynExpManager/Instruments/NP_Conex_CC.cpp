@@ -11,18 +11,19 @@ namespace DynExpInstr
 			auto InstrParams = DynExp::dynamic_Params_cast<NP_Conex_CC>(Instance.ParamsGetter());
 			auto InstrData = DynExp::dynamic_InstrumentData_cast<NP_Conex_CC>(Instance.InstrumentDataGetter());
 
+			InstrData->Channel = InstrParams->Conex_CC_Address;
 			Instance.LockObject(InstrParams->HardwareAdapter, InstrData->HardwareAdapter);
 			InstrData->HardwareAdapter->Clear();
 
 			// Define and go to home (this includes resetting the controller):
 			// To set the current position as home position, the stage has to be in the CONFIGURATION state. This state can only be reached from the NOT REFERENCED state. 
-			*InstrData->HardwareAdapter << Util::ToStr(InstrParams->ConexAddress.Get()) + "RS"; // Go to NOT REFERENCED state.
+			*InstrData->HardwareAdapter << Util::ToStr(InstrData->GetChannel()) + "RS"; // Go to NOT REFERENCED state.
 			std::this_thread::sleep_for(std::chrono::milliseconds(500)); // This takes 500 ms.
-			*InstrData->HardwareAdapter << Util::ToStr(InstrParams->ConexAddress.Get()) + "PW1"; // Go to CONFIGURATION state.
-			*InstrData->HardwareAdapter << Util::ToStr(InstrParams->ConexAddress.Get()) + "HT1"; // Set current position to home position.
-			*InstrData->HardwareAdapter << Util::ToStr(InstrParams->ConexAddress.Get()) + "PW0"; // Go to NOT REFERENCED state.
+			*InstrData->HardwareAdapter << Util::ToStr(InstrData->GetChannel()) + "PW1"; // Go to CONFIGURATION state.
+			*InstrData->HardwareAdapter << Util::ToStr(InstrData->GetChannel()) + "HT1"; // Set current position to home position.
+			*InstrData->HardwareAdapter << Util::ToStr(InstrData->GetChannel()) + "PW0"; // Go to NOT REFERENCED state.
 			std::this_thread::sleep_for(std::chrono::seconds(3)); // This takes 3 s.
-			*InstrData->HardwareAdapter << Util::ToStr(InstrParams->ConexAddress.Get()) + "OR"; // Go to READY state.
+			*InstrData->HardwareAdapter << Util::ToStr(InstrData->GetChannel()) + "OR"; // Go to READY state.
 		}
 
 		InitFuncImpl(dispatch_tag<InitTask>(), Instance);
@@ -32,13 +33,12 @@ namespace DynExpInstr
 	{
 		ExitFuncImpl(dispatch_tag<ExitTask>(), Instance);
 
-		auto InstrParams = DynExp::dynamic_Params_cast<NP_Conex_CC>(Instance.ParamsGetter());
 		auto InstrData = DynExp::dynamic_InstrumentData_cast<NP_Conex_CC>(Instance.InstrumentDataGetter());
 
 		try
 		{
 			// Abort motion.
-			*InstrData->HardwareAdapter << Util::ToStr(InstrParams->ConexAddress.Get()) + "ST";
+			*InstrData->HardwareAdapter << Util::ToStr(InstrData->GetChannel()) + "ST";
 		}
 		catch (...)
 		{
@@ -53,7 +53,6 @@ namespace DynExpInstr
 	{
 		try
 		{
-			auto InstrParams = DynExp::dynamic_Params_cast<NP_Conex_CC>(Instance.ParamsGetter());
 			auto InstrData = DynExp::dynamic_InstrumentData_cast<NP_Conex_CC>(Instance.InstrumentDataGetter());
 			auto Owner = DynExp::dynamic_Object_cast<NP_Conex_CC>(&Instance.GetOwner());
 			bool UpdateError = false;
@@ -61,7 +60,7 @@ namespace DynExpInstr
 			try
 			{
 				// Tell status:
-				*InstrData->HardwareAdapter << Util::ToStr(InstrParams->ConexAddress.Get()) + "TS";
+				*InstrData->HardwareAdapter << Util::ToStr(InstrData->GetChannel()) + "TS";
 				std::stringstream StatusStream(NP_Conex_CC::AnswerToNumberString(InstrData->HardwareAdapter->WaitForLine(1, std::chrono::milliseconds(25)), "TS"));
 				StatusStream.exceptions(std::ofstream::failbit | std::ofstream::badbit);
 
@@ -69,13 +68,21 @@ namespace DynExpInstr
 				char ErrorMapBuffer[5]{ 0 };  // 4 characters + 1 for null terminator
 				StatusStream.read(ErrorMapBuffer, 4);  // Read the first 4 characters
 				std::istringstream ErrorMapStream(ErrorMapBuffer);
+
+				//int tempErrorMap;
+				//ErrorMapStream >> std::hex >> tempErrorMap;
+				//ErrorMap = static_cast<uint16_t>(tempErrorMap);
 				ErrorMapStream >> std::hex >> ErrorMap;
 				InstrData->ErrorCode = static_cast<NP_Conex_CC_StageData::ErrorCodeType>(ErrorMap); // Only 0 is no error
 
-				uint8_t State;     // Variable to hold the state (8 bits)
+				uint16_t State;     // Variable to hold the state (8 bits)
 				char StateBuffer[3]{ 0 };  // 2 characters + 1 for null terminator
 				StatusStream.read(StateBuffer, 2);  // Read the next 2 characters
 				std::istringstream StateStream(StateBuffer);
+
+				//int tempState;
+				//StateStream >> std::hex >> tempState;
+				//State = static_cast<uint8_t>(tempState);
 				StateStream >> std::hex >> State;
 				InstrData->Conex_CCStatus.Set(State);
 
@@ -87,7 +94,7 @@ namespace DynExpInstr
 					|| Conex_CCStatus.DisableFromMoving() || Conex_CCStatus.DisableFromTracking() || Conex_CCStatus.DisableFromReadyT()
 					|| Conex_CCStatus.TrackingFromReadyT() || Conex_CCStatus.TrackingFromTracking())
 				{
-					*InstrData->HardwareAdapter << Util::ToStr(InstrParams->ConexAddress.Get()) + "VA?";
+					*InstrData->HardwareAdapter << Util::ToStr(InstrData->GetChannel()) + "VA?";
 					// 2. Set default velocity.
 					InstrData->EnqueuePriorityTask(DynExp::MakeTask<NP_Conex_CC_Tasks::SetVelocityTask>(Owner->GetDefaultVelocity()));
 					// 1. The stage is set to READY state, before the velocity is set to the default velocity:
@@ -95,17 +102,14 @@ namespace DynExpInstr
 				}
 
 				// Tell position:
-				*InstrData->HardwareAdapter << Util::ToStr(InstrParams->ConexAddress.Get()) + "TP";
+				*InstrData->HardwareAdapter << Util::ToStr(InstrData->GetChannel()) + "TP";
 				auto PositionalAnswer = NP_Conex_CC::AnswerToNumberString(InstrData->HardwareAdapter->WaitForLine(1, std::chrono::milliseconds(25)), "TP");
-				double CurrentPosition = Util::StrToT<double>(PositionalAnswer) * Owner->GetFloatToIntConversion();
-				InstrData->SetCurrentPosition(Util::NumToT<PositionerStageData::PositionType>(CurrentPosition));
+				InstrData->SetCurrentPosition(Util::NumToT<PositionerStageData::PositionType>(Util::StrToT<double>(PositionalAnswer) * Owner->GetInputValuePositionTypeRatio()));
 
 				// Tell velocity:
-				*InstrData->HardwareAdapter << Util::ToStr(InstrParams->ConexAddress.Get()) + "VA?";
+				*InstrData->HardwareAdapter << Util::ToStr(InstrData->GetChannel()) + "VA?";
 				auto VelocityAnswer = NP_Conex_CC::AnswerToNumberString(InstrData->HardwareAdapter->WaitForLine(1, std::chrono::milliseconds(25)), "VA");
-				double CurrentVelocity = Util::StrToT<double>(VelocityAnswer) * Owner->GetFloatToIntConversion();
-				auto DisplayedVelocity = Util::NumToT<PositionerStageData::PositionType>(CurrentVelocity);
-				InstrData->SetVelocity(DisplayedVelocity);
+				InstrData->SetVelocity(Util::NumToT<PositionerStageData::PositionType>(Util::StrToT<double>(VelocityAnswer) * Owner->GetInputValuePositionTypeRatio()));
 			}
 
 			catch ([[maybe_unused]] const Util::InvalidDataException& e)
@@ -147,20 +151,18 @@ namespace DynExpInstr
 
 	DynExp::TaskResultType NP_Conex_CC_Tasks::ResetTask::RunChild(DynExp::InstrumentInstance& Instance)
 	{
-		auto InstrParams = DynExp::dynamic_Params_cast<NP_Conex_CC>(Instance.ParamsGetter());
 		auto InstrData = DynExp::dynamic_InstrumentData_cast<NP_Conex_CC>(Instance.InstrumentDataGetter());
 
-		*InstrData->HardwareAdapter << Util::ToStr(InstrParams->ConexAddress.Get()) + "RS"; // This takes 500 ms.
+		*InstrData->HardwareAdapter << Util::ToStr(InstrData->GetChannel()) + "RS"; // This takes 500 ms.
 
 		return {};
 	}
 
 	DynExp::TaskResultType NP_Conex_CC_Tasks::SetReadyTask::RunChild(DynExp::InstrumentInstance& Instance)
 	{
-		auto InstrParams = DynExp::dynamic_Params_cast<NP_Conex_CC>(Instance.ParamsGetter());
 		auto InstrData = DynExp::dynamic_InstrumentData_cast<NP_Conex_CC>(Instance.InstrumentDataGetter());
 
-		*InstrData->HardwareAdapter << Util::ToStr(InstrParams->ConexAddress.Get()) + "OR";
+		*InstrData->HardwareAdapter << Util::ToStr(InstrData->GetChannel()) + "OR";
 
 		return {};
 	}
@@ -169,13 +171,13 @@ namespace DynExpInstr
 	{
 		auto InstrData = DynExp::dynamic_InstrumentData_cast<NP_Conex_CC>(Instance.InstrumentDataGetter());
 
-		// 3.
+		// 3. After homing, the stage is set to READY state again:
 		InstrData->EnqueuePriorityTask(DynExp::MakeTask<NP_Conex_CC_Tasks::SetReadyTask>(nullptr,
 			std::chrono::system_clock::now() + std::chrono::milliseconds(3000)));
-		// 2. 
+		// 2. In the NOT REFERENCED state, the homing commands are applied:
 		InstrData->EnqueuePriorityTask(DynExp::MakeTask<NP_Conex_CC_Tasks::SetHomeExecutionTask>(nullptr,
 			std::chrono::system_clock::now() + std::chrono::milliseconds(500)));
-		// 1.
+		// 1. Go to NOT REFERENCED state:
 		InstrData->EnqueuePriorityTask(DynExp::MakeTask<NP_Conex_CC_Tasks::ResetTask>());
 
 		return {};
@@ -183,14 +185,13 @@ namespace DynExpInstr
 
 	DynExp::TaskResultType NP_Conex_CC_Tasks::SetHomeExecutionTask::RunChild(DynExp::InstrumentInstance& Instance)
 	{
-		auto InstrParams = DynExp::dynamic_Params_cast<NP_Conex_CC>(Instance.ParamsGetter());
 		auto InstrData = DynExp::dynamic_InstrumentData_cast<NP_Conex_CC>(Instance.InstrumentDataGetter());
 		auto Owner = DynExp::dynamic_Object_cast<NP_Conex_CC>(&Instance.GetOwner());
 
-		*InstrData->HardwareAdapter << Util::ToStr(InstrParams->ConexAddress.Get()) + "PW1";
-		*InstrData->HardwareAdapter << Util::ToStr(InstrParams->ConexAddress.Get()) + "VA" + Util::ToStr(InstrData->GetVelocity() / Owner->GetFloatToIntConversion());
-		*InstrData->HardwareAdapter << Util::ToStr(InstrParams->ConexAddress.Get()) + "HT1"; // use current position as HOME
-		*InstrData->HardwareAdapter << Util::ToStr(InstrParams->ConexAddress.Get()) + "PW0"; // this takes 3 s.
+		*InstrData->HardwareAdapter << Util::ToStr(InstrData->GetChannel()) + "PW1";
+		*InstrData->HardwareAdapter << Util::ToStr(InstrData->GetChannel()) + "VA" + Util::ToStr(InstrData->GetVelocity() / Owner->GetInputValuePositionTypeRatio());
+		*InstrData->HardwareAdapter << Util::ToStr(InstrData->GetChannel()) + "HT1"; // use current position as HOME
+		*InstrData->HardwareAdapter << Util::ToStr(InstrData->GetChannel()) + "PW0"; // this takes 3 s.
 
 		return {};
 	}
@@ -199,13 +200,13 @@ namespace DynExpInstr
 	{
 		auto InstrData = DynExp::dynamic_InstrumentData_cast<NP_Conex_CC>(Instance.InstrumentDataGetter());
 
-		// 3.
+		// 3. After homing, the stage is set to READY state again:
 		InstrData->EnqueuePriorityTask(DynExp::MakeTask<NP_Conex_CC_Tasks::SetReadyTask>(nullptr,
 			std::chrono::system_clock::now() + std::chrono::milliseconds(3000)));
-		// 2. 
+		// 2. In the NOT REFERENCED state, the referencing commands are applied:
 		InstrData->EnqueuePriorityTask(DynExp::MakeTask<NP_Conex_CC_Tasks::ReferenceExecutionTask>(nullptr,
 			std::chrono::system_clock::now() + std::chrono::milliseconds(500)));
-		// 1.
+		// 1. Go to NOT REFERENCED state:
 		InstrData->EnqueuePriorityTask(DynExp::MakeTask<NP_Conex_CC_Tasks::ResetTask>());
 
 		return {};
@@ -213,25 +214,23 @@ namespace DynExpInstr
 
 	DynExp::TaskResultType NP_Conex_CC_Tasks::ReferenceExecutionTask::RunChild(DynExp::InstrumentInstance& Instance)
 	{
-		auto InstrParams = DynExp::dynamic_Params_cast<NP_Conex_CC>(Instance.ParamsGetter());
 		auto InstrData = DynExp::dynamic_InstrumentData_cast<NP_Conex_CC>(Instance.InstrumentDataGetter());
 		auto Owner = DynExp::dynamic_Object_cast<NP_Conex_CC>(&Instance.GetOwner());
 
-		*InstrData->HardwareAdapter << Util::ToStr(InstrParams->ConexAddress.Get()) + "PW1";
-		*InstrData->HardwareAdapter << Util::ToStr(InstrParams->ConexAddress.Get()) + "VA" + Util::ToStr(InstrData->GetVelocity() / Owner->GetFloatToIntConversion());
-		*InstrData->HardwareAdapter << Util::ToStr(InstrParams->ConexAddress.Get()) + "HT2"; // use mechanical zero as HOME
-		*InstrData->HardwareAdapter << Util::ToStr(InstrParams->ConexAddress.Get()) + "PW0"; // this takes 3 s.
+		*InstrData->HardwareAdapter << Util::ToStr(InstrData->GetChannel()) + "PW1";
+		*InstrData->HardwareAdapter << Util::ToStr(InstrData->GetChannel()) + "VA" + Util::ToStr(InstrData->GetVelocity() / Owner->GetInputValuePositionTypeRatio());
+		*InstrData->HardwareAdapter << Util::ToStr(InstrData->GetChannel()) + "HT2"; // use mechanical zero as HOME
+		*InstrData->HardwareAdapter << Util::ToStr(InstrData->GetChannel()) + "PW0"; // this takes 3 s.
 
 		return {};
 	}
 
 	DynExp::TaskResultType NP_Conex_CC_Tasks::SetVelocityTask::RunChild(DynExp::InstrumentInstance& Instance)
 	{
-		auto InstrParams = DynExp::dynamic_Params_cast<NP_Conex_CC>(Instance.ParamsGetter());
 		auto InstrData = DynExp::dynamic_InstrumentData_cast<NP_Conex_CC>(Instance.InstrumentDataGetter());
 		auto Owner = DynExp::dynamic_Object_cast<NP_Conex_CC>(&Instance.GetOwner());
 
-		*InstrData->HardwareAdapter << Util::ToStr(InstrParams->ConexAddress.Get()) + "VA" + Util::ToStr(Velocity / Owner->GetFloatToIntConversion());
+		*InstrData->HardwareAdapter << Util::ToStr(InstrData->GetChannel()) + "VA" + Util::ToStr(Velocity / Owner->GetInputValuePositionTypeRatio());
 
 		return {};
 	}
@@ -240,10 +239,10 @@ namespace DynExpInstr
 	{
 		auto InstrData = DynExp::dynamic_InstrumentData_cast<NP_Conex_CC>(Instance.InstrumentDataGetter());
 
-		// 2.
+		// 2. Move to home position:
 		InstrData->EnqueuePriorityTask(DynExp::MakeTask<NP_Conex_CC_Tasks::MoveToHomeExecutionTask>(nullptr,
 			std::chrono::system_clock::now() + std::chrono::milliseconds(300)));
-		// 1.
+		// 1. Stop the motion:
 		InstrData->EnqueuePriorityTask(DynExp::MakeTask<NP_Conex_CC_Tasks::StopMotionTask>());
 
 		return {};
@@ -251,10 +250,9 @@ namespace DynExpInstr
 
 	DynExp::TaskResultType NP_Conex_CC_Tasks::MoveToHomeExecutionTask::RunChild(DynExp::InstrumentInstance& Instance)
 	{
-		auto InstrParams = DynExp::dynamic_Params_cast<NP_Conex_CC>(Instance.ParamsGetter());
 		auto InstrData = DynExp::dynamic_InstrumentData_cast<NP_Conex_CC>(Instance.InstrumentDataGetter());
 
-		*InstrData->HardwareAdapter << Util::ToStr(InstrParams->ConexAddress.Get()) + "PA0";
+		*InstrData->HardwareAdapter << Util::ToStr(InstrData->GetChannel()) + "PA0";
 
 		return {};
 	}
@@ -263,10 +261,10 @@ namespace DynExpInstr
 	{
 		auto InstrData = DynExp::dynamic_InstrumentData_cast<NP_Conex_CC>(Instance.InstrumentDataGetter());
 
-		// 2.
+		// 2. Move to absolute position:
 		InstrData->EnqueuePriorityTask(DynExp::MakeTask<NP_Conex_CC_Tasks::MoveAbsoluteExecutionTask>(Position, nullptr,
 			std::chrono::system_clock::now() + std::chrono::milliseconds(300)));
-		// 1.
+		// 1. Stop the motion:
 		InstrData->EnqueuePriorityTask(DynExp::MakeTask<NP_Conex_CC_Tasks::StopMotionTask>());
 
 		return {};
@@ -274,11 +272,10 @@ namespace DynExpInstr
 
 	DynExp::TaskResultType NP_Conex_CC_Tasks::MoveAbsoluteExecutionTask::RunChild(DynExp::InstrumentInstance& Instance)
 	{
-		auto InstrParams = DynExp::dynamic_Params_cast<NP_Conex_CC>(Instance.ParamsGetter());
 		auto InstrData = DynExp::dynamic_InstrumentData_cast<NP_Conex_CC>(Instance.InstrumentDataGetter());
 		auto Owner = DynExp::dynamic_Object_cast<NP_Conex_CC>(&Instance.GetOwner());
 
-		*InstrData->HardwareAdapter << Util::ToStr(InstrParams->ConexAddress.Get()) + "PA" + Util::ToStr(Position / Owner->GetFloatToIntConversion());
+		*InstrData->HardwareAdapter << Util::ToStr(InstrData->GetChannel()) + "PA" + Util::ToStr(Position / Owner->GetInputValuePositionTypeRatio());
 
 		return {};
 	}
@@ -287,10 +284,10 @@ namespace DynExpInstr
 	{
 		auto InstrData = DynExp::dynamic_InstrumentData_cast<NP_Conex_CC>(Instance.InstrumentDataGetter());
 
-		// 2.
+		// 2. Move to relative position:
 		InstrData->EnqueuePriorityTask(DynExp::MakeTask<NP_Conex_CC_Tasks::MoveRelativeExecutionTask>(Position, nullptr,
 			std::chrono::system_clock::now() + std::chrono::milliseconds(300)));
-		// 1.
+		// 1. Stop the motion:
 		InstrData->EnqueuePriorityTask(DynExp::MakeTask<NP_Conex_CC_Tasks::StopMotionTask>());
 
 		return {};
@@ -298,22 +295,22 @@ namespace DynExpInstr
 
 	DynExp::TaskResultType NP_Conex_CC_Tasks::MoveRelativeExecutionTask::RunChild(DynExp::InstrumentInstance& Instance)
 	{
-		auto InstrParams = DynExp::dynamic_Params_cast<NP_Conex_CC>(Instance.ParamsGetter());
 		auto InstrData = DynExp::dynamic_InstrumentData_cast<NP_Conex_CC>(Instance.InstrumentDataGetter());
 		auto Owner = DynExp::dynamic_Object_cast<NP_Conex_CC>(&Instance.GetOwner());
 
-		*InstrData->HardwareAdapter << Util::ToStr(InstrParams->ConexAddress.Get()) + "PR" + Util::ToStr(Position / Owner->GetFloatToIntConversion());
+		auto MR = Util::ToStr(InstrData->GetChannel()) + "PR" + Util::ToStr(Position / Owner->GetInputValuePositionTypeRatio());
+		*InstrData->HardwareAdapter << MR;
 
 		return {};
 	}
 
 	DynExp::TaskResultType NP_Conex_CC_Tasks::StopMotionTask::RunChild(DynExp::InstrumentInstance& Instance)
 	{
-		auto InstrParams = DynExp::dynamic_Params_cast<NP_Conex_CC>(Instance.ParamsGetter());
 		auto InstrData = DynExp::dynamic_InstrumentData_cast<NP_Conex_CC>(Instance.InstrumentDataGetter());
 
-		// It is not possible to use an if-condition, since the update of the Conex_CCStatus is to slow.
-		*InstrData->HardwareAdapter << Util::ToStr(InstrParams->ConexAddress.Get()) + "ST";
+		// It is not possible to use an if-condition that checks if the stage is currently moving,
+		// since the update of the Conex_CCStatus is too slow.
+		*InstrData->HardwareAdapter << Util::ToStr(InstrData->GetChannel()) + "ST";
 
 		return DynExp::TaskResultType();
 	}
@@ -368,8 +365,9 @@ namespace DynExpInstr
 	void NP_Conex_CC::OnErrorChild() const
 	{
 		auto InstrData = DynExp::dynamic_InstrumentData_cast<NP_Conex_CC>(GetInstrumentData());
-
-		*InstrData->HardwareAdapter << "ST"; // Stop movement on all controllers
+		
+		// Abort motion.
+		*InstrData->HardwareAdapter << Util::ToStr(InstrData->GetChannel()) + "ST";
 	}
 
 	void NP_Conex_CC::ResetImpl(dispatch_tag<PositionerStage>)
