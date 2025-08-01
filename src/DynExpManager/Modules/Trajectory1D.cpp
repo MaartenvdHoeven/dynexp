@@ -164,7 +164,8 @@ namespace DynExpModule
 			if ((ThisSampleStart <= TimeEllapsed && NextSampleStart > TimeEllapsed) ||
 				(ThisSampleStart <= TimeEllapsed && i + 1 == Samples.size()))
 			{
-				ModuleData->GetPositionerStage()->MoveAbsolute(Samples[i].Value);
+				//ModuleData->GetPositionerStage()->MoveAbsolute(Samples[i].Value);
+				ModuleData->GetPositionerStage()->MoveRelative(Samples[i].Value * 1e6);
 				ModuleData->SetCurrentPlaybackPos(i + 2);
 
 				break;

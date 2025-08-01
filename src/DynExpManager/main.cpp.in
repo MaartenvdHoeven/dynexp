@@ -34,6 +34,7 @@
 #cmakedefine USE_PVCAM
 #cmakedefine USE_QUTOOLSQUTAG
 #cmakedefine USE_SMARACT
+#cmakedefine USE_STANDA8SMC5
 #cmakedefine USE_SWABIANPULSESTREAMER
 #cmakedefine USE_ZIMFLI
 ///@}
@@ -129,6 +130,9 @@ int main(int argc, char *argv[])
 #ifdef USE_SMARACT
 		,DynExpHardware::SmarActHardwareAdapter
 #endif // USE_SMARACT
+#ifdef USE_STANDA8SMC5
+		,DynExpHardware::StandaHardwareAdapter
+#endif // USE_STANDA8SMC5
 #ifdef USE_SWABIANPULSESTREAMER
 		,DynExpHardware::SIPulseStreamerHardwareAdapter
 #endif // USE_SWABIANPULSESTREAMER
