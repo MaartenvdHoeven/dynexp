@@ -163,6 +163,11 @@ namespace DynExpModule::Widefield
 		*/
 		bool StoreTWEmitterListSelection();
 
+		/**
+		 * @brief Rebuilds MainGraphicsPixmap from MainGraphicsRawImage, applying auto contrast if enabled.
+		*/
+		void RenderMainGraphicsPixmap() noexcept;
+
 		std::unique_ptr<Ui::WidefieldMicroscope> ui;
 		StatusBarType StatusBar;
 		
@@ -172,6 +177,10 @@ namespace DynExpModule::Widefield
 		QPixmap MainGraphicsPixmap;
 		QGraphicsPixmapItem* MainGraphicsPixmapItem;
 		QGraphicsScene* MainGraphicsScene;
+		QImage MainGraphicsRawImage;					//!< Unmodified copy of the last image, kept to redraw it when auto contrast is toggled.
+		QAction* AutoContrastAction = nullptr;
+		double AutoContrastLowerClipPercent = .0;
+		double AutoContrastUpperClipPercent = .0;
 		QPoint CurrentConfocalSpotPosition;
 		QString SaveWidefieldImageFilename;
 
@@ -201,6 +210,7 @@ namespace DynExpModule::Widefield
 		void OnZoomInClicked();
 		void OnZoomOutClicked();
 		void OnZoomFitClicked(bool Checked);
+		void OnAutoContrastToggled(bool Checked);
 		void OnImageMouseMove(QMouseEvent* Event);
 		void OnCellIDContextMenuRequested(const QPoint& Position);
 		void OnEmitterListCellClicked(int Row, int Column);

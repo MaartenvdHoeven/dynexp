@@ -8,6 +8,107 @@
 
 namespace DynExpModule::Widefield
 {
+	namespace
+	{
+		/**
+		 * @brief Builds a Grayscale8 copy of a grayscale image with its intensity range stretched for display.
+		 * The darkest LowerClipPercent % of the pixels are displayed black, the brightest UpperClipPercent % white,
+		 * and the values in between are mapped linearly. The source image is not modified.
+		*/
+		template <typename PixelType>
+		QImage StretchGrayscaleImage(const QImage& Image, double LowerClipPercent, double UpperClipPercent)
+		{
+			constexpr std::size_t NumBins = static_cast<std::size_t>(std::numeric_limits<PixelType>::max()) + 1;
+			const int Width = Image.width();
+			const int Height = Image.height();
+			const auto NumPixels = static_cast<unsigned long long>(Width) * static_cast<unsigned long long>(Height);
+
+			std::vector<unsigned long long> Histogram(NumBins, 0);
+			for (int y = 0; y < Height; ++y)
+			{
+				const auto Line = reinterpret_cast<const PixelType*>(Image.constScanLine(y));
+				for (int x = 0; x < Width; ++x)
+					++Histogram[Line[x]];
+			}
+
+			// Number of pixels which may be clipped at one end. At least one pixel is never clipped.
+			const auto ClipCount = [NumPixels](double Percent) {
+				const auto Count = static_cast<unsigned long long>(NumPixels * std::clamp(Percent, 0.0, 100.0) / 100.0);
+				return std::min(Count, NumPixels - 1);
+			};
+			const auto LowerClipCount = ClipCount(LowerClipPercent);
+			const auto UpperClipCount = ClipCount(UpperClipPercent);
+
+			// Low: smallest value with more than LowerClipCount pixels at or below it.
+			std::size_t Low = 0;
+			for (unsigned long long Cumulative = 0; Low < NumBins - 1; ++Low)
+			{
+				Cumulative += Histogram[Low];
+				if (Cumulative > LowerClipCount)
+					break;
+			}
+
+			// High: largest value with more than UpperClipCount pixels at or above it.
+			std::size_t High = NumBins - 1;
+			for (unsigned long long Cumulative = 0; High > 0; --High)
+			{
+				Cumulative += Histogram[High];
+				if (Cumulative > UpperClipCount)
+					break;
+			}
+
+			// Flat image or overlapping clip ranges: keep a range of at least one to avoid dividing by zero.
+			if (High <= Low)
+			{
+				High = std::min(Low + 1, NumBins - 1);
+				Low = High - 1;
+			}
+
+			std::vector<uchar> LUT(NumBins);
+			const double Scale = 255.0 / static_cast<double>(High - Low);
+			for (std::size_t Value = 0; Value < NumBins; ++Value)
+			{
+				if (Value <= Low)
+					LUT[Value] = 0;
+				else if (Value >= High)
+					LUT[Value] = 255;
+				else
+					LUT[Value] = static_cast<uchar>(std::lround(static_cast<double>(Value - Low) * Scale));
+			}
+
+			QImage Result(Width, Height, QImage::Format_Grayscale8);
+			if (Result.isNull())
+				return {};
+
+			for (int y = 0; y < Height; ++y)
+			{
+				const auto SrcLine = reinterpret_cast<const PixelType*>(Image.constScanLine(y));
+				auto DstLine = Result.scanLine(y);
+				for (int x = 0; x < Width; ++x)
+					DstLine[x] = LUT[SrcLine[x]];
+			}
+
+			return Result;
+		}
+
+		/**
+		 * @brief Returns a contrast-stretched copy of Image for display, or a null image if Image is null or
+		 * its format is not supported. In the latter case, the caller displays Image unmodified.
+		*/
+		QImage MakeAutoContrastImage(const QImage& Image, double LowerClipPercent, double UpperClipPercent)
+		{
+			if (Image.isNull())
+				return {};
+
+			switch (Image.format())
+			{
+			case QImage::Format_Grayscale16: return StretchGrayscaleImage<quint16>(Image, LowerClipPercent, UpperClipPercent);
+			case QImage::Format_Grayscale8: return StretchGrayscaleImage<quint8>(Image, LowerClipPercent, UpperClipPercent);
+			default: return {};		// e.g. color images are displayed unmodified.
+			}
+		}
+	}
+
 	WidefieldMicroscopeWidget::StatusBarType::StatusBarType(WidefieldMicroscopeWidget* Owner)
 		: CurrentState(nullptr), CurrentContext(nullptr),
 		StateLabel(new QLabel(Owner)),
@@ -99,6 +200,14 @@ namespace DynExpModule::Widefield
 		MainGraphicsView->contextMenu()->addAction(ui->action_Zoom_out);
 		MainGraphicsView->contextMenu()->addAction(ui->action_Zoom_reset);
 		MainGraphicsView->contextMenu()->addAction(ui->action_Zoom_fit);
+
+		// Auto contrast (display only, refer to RenderMainGraphicsPixmap())
+		AutoContrastAction = new QAction("Auto &contrast", this);
+		AutoContrastAction->setCheckable(true);
+		AutoContrastAction->setChecked(true);
+		AutoContrastAction->setToolTip("Stretch the contrast of the displayed image. Does not modify saved or analyzed images.");
+		connect(AutoContrastAction, &QAction::toggled, this, &WidefieldMicroscopeWidget::OnAutoContrastToggled);
+		MainGraphicsView->contextMenu()->addAction(AutoContrastAction);
 		MainGraphicsView->contextMenu()->addSeparator();
 		MainGraphicsView->contextMenu()->addAction(ui->action_Save_Image);
 
@@ -358,6 +467,9 @@ namespace DynExpModule::Widefield
 
 		if (ModuleData->IsCurrentImageAvlbl())
 		{
+			AutoContrastLowerClipPercent = ModuleData->GetAutoContrastLowerClipPercent();
+			AutoContrastUpperClipPercent = ModuleData->GetAutoContrastUpperClipPercent();
+
 			// SetMainGraphicsImage creates a deep copy of the current image.
 			SetMainGraphicsImage(ModuleData->GetCurrentImage());
 			ModuleData->ResetCurrentImageAvlbl();
@@ -643,8 +755,34 @@ namespace DynExpModule::Widefield
 
 	void WidefieldMicroscopeWidget::SetMainGraphicsImage(const QImage& Image) noexcept
 	{
-		MainGraphicsPixmap = QPixmap::fromImage(Image);		// deep copy
+		MainGraphicsRawImage = Image.copy();				// deep copy, the module's image is never modified
+		RenderMainGraphicsPixmap();
+	}
+
+	void WidefieldMicroscopeWidget::RenderMainGraphicsPixmap() noexcept
+	{
+		QImage DisplayImage;
+		if (AutoContrastAction && AutoContrastAction->isChecked())
+		{
+			try
+			{
+				DisplayImage = MakeAutoContrastImage(MainGraphicsRawImage, AutoContrastLowerClipPercent, AutoContrastUpperClipPercent);
+			}
+			catch (...)
+			{
+				// Fall back to displaying the unmodified image.
+				DisplayImage = QImage();
+			}
+		}
+
+		MainGraphicsPixmap = QPixmap::fromImage(DisplayImage.isNull() ? MainGraphicsRawImage : DisplayImage);	// deep copy
 		MainGraphicsPixmap.detach();						// just to be sure...
+	}
+
+	void WidefieldMicroscopeWidget::OnAutoContrastToggled(bool Checked)
+	{
+		RenderMainGraphicsPixmap();
+		UpdateScene();
 	}
 
 	void WidefieldMicroscopeWidget::UpdateScene()

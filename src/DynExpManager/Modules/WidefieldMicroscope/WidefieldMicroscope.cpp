@@ -351,6 +351,8 @@ namespace DynExpModule::Widefield
 		WidefieldPosition.Reset();
 		CurrentImage = QImage();
 		CurrentImageChanged = false;
+		AutoContrastLowerClipPercent = .0;
+		AutoContrastUpperClipPercent = .0;
 		CurrentCellID = {};
 		LastCellID = {};
 		LocalizedPositions.clear();
@@ -1353,6 +1355,10 @@ namespace DynExpModule::Widefield
 				ModuleData->SetMinCameraExposureTime(CameraData->GetMinExposureTime());
 				ModuleData->SetMaxCameraExposureTime(CameraData->GetMaxExposureTime());
 			} // CameraData unlocked here.
+
+			// Display only: these values never modify the image data which is saved or passed to the localizer.
+			ModuleData->SetAutoContrastLowerClipPercent(ModuleParams->AutoContrastLowerClipPercent);
+			ModuleData->SetAutoContrastUpperClipPercent(ModuleParams->AutoContrastUpperClipPercent);
 
 			if (ModuleParams->WidefieldLocalizer.ContainsID())
 			{
