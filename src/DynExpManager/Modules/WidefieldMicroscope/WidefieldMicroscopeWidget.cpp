@@ -204,7 +204,7 @@ namespace DynExpModule::Widefield
 		// Auto contrast (display only, refer to RenderMainGraphicsPixmap())
 		AutoContrastAction = new QAction("Auto &contrast", this);
 		AutoContrastAction->setCheckable(true);
-		AutoContrastAction->setChecked(true);
+		AutoContrastAction->setChecked(false);
 		AutoContrastAction->setToolTip("Stretch the contrast of the displayed image. Does not modify saved or analyzed images.");
 		connect(AutoContrastAction, &QAction::toggled, this, &WidefieldMicroscopeWidget::OnAutoContrastToggled);
 		MainGraphicsView->contextMenu()->addAction(AutoContrastAction);
