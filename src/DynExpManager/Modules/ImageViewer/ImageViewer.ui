@@ -284,6 +284,19 @@
             </widget>
            </item>
            <item>
+            <widget class="QCheckBox" name="MirrorCheckBox">
+             <property name="toolTip">
+              <string>Mirror the displayed image left/right. Saved images and autofocusing are not affected.</string>
+             </property>
+             <property name="text">
+              <string>Mirror left/right</string>
+             </property>
+             <property name="checked">
+              <bool>false</bool>
+             </property>
+            </widget>
+           </item>
+           <item>
             <widget class="QQuickWidget" name="Histogram">
              <property name="sizePolicy">
               <sizepolicy hsizetype="Expanding" vsizetype="Expanding">

@@ -68,7 +68,7 @@ namespace DynExpModule::ImageViewer
 		void UpdateHistogramImpl();
 
 		/**
-		 * @brief Rebuilds Pixmap from RawImage, applying auto contrast if enabled.
+		 * @brief Rebuilds Pixmap from RawImage, applying auto contrast and mirroring if enabled.
 		*/
 		void RenderPixmap() noexcept;
 
@@ -90,7 +90,7 @@ namespace DynExpModule::ImageViewer
 		QPixmap Pixmap;
 		QGraphicsPixmapItem* GraphicsPixmapItem;
 		QGraphicsScene* GraphicsScene;
-		QImage RawImage;						//!< Unmodified copy of the last image, kept to redraw it when auto contrast is toggled.
+		QImage RawImage;						//!< Unmodified copy of the last image, kept to redraw it when auto contrast or mirroring is toggled.
 
 		Util::ImageHistogramType IntensityHistogram = {};
 		Util::ImageRGBHistogramType RGBHistogram = {};
@@ -105,6 +105,7 @@ namespace DynExpModule::ImageViewer
 		void OnZoomOutClicked();
 		void OnZoomFitClicked(bool Checked);
 		void OnAutoContrastToggled(bool Checked);
+		void OnMirrorToggled(bool Checked);
 		void OnImageMouseMove(QMouseEvent* Event);
 	};
 

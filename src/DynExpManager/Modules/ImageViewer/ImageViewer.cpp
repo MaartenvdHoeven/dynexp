@@ -175,6 +175,9 @@ namespace DynExpModule::ImageViewer
 
 		// Auto contrast (display only, refer to RenderPixmap())
 		connect(ui->AutoContrastCheckBox, &QCheckBox::toggled, this, &ImageViewerWidget::OnAutoContrastToggled);
+
+		// Mirror left/right (display only, refer to RenderPixmap())
+		connect(ui->MirrorCheckBox, &QCheckBox::toggled, this, &ImageViewerWidget::OnMirrorToggled);
 	}
 
 	void ImageViewerWidget::SetImage(const QImage& NewImage) noexcept
@@ -199,7 +202,14 @@ namespace DynExpModule::ImageViewer
 			}
 		}
 
-		Pixmap = QPixmap::fromImage(DisplayImage.isNull() ? RawImage : DisplayImage);	// deep copy
+		if (DisplayImage.isNull())
+			DisplayImage = RawImage;
+
+		// flipped() returns a new image, so RawImage stays untouched.
+		if (ui->MirrorCheckBox->isChecked() && !DisplayImage.isNull())
+			DisplayImage = DisplayImage.flipped(Qt::Horizontal);
+
+		Pixmap = QPixmap::fromImage(DisplayImage);	// deep copy
 		Pixmap.detach();						// just to be sure...
 	}
 
@@ -371,6 +381,12 @@ namespace DynExpModule::ImageViewer
 		UpdateScene();
 	}
 
+	void ImageViewerWidget::OnMirrorToggled(bool Checked)
+	{
+		RenderPixmap();
+		UpdateScene();
+	}
+
 	void ImageViewerWidget::OnImageMouseMove(QMouseEvent* Event)
 	{
 		auto LocalPoint = GraphicsView->mapFromGlobal(Event->globalPosition().toPoint());
@@ -378,6 +394,10 @@ namespace DynExpModule::ImageViewer
 		if (!GraphicsView->items(LocalPoint).empty())
 		{
 			auto Point = GraphicsView->mapToScene(LocalPoint).toPoint();
+
+			// Report coordinates of the original (saved) image, not of the mirrored display.
+			if (ui->MirrorCheckBox->isChecked() && !Pixmap.isNull())
+				Point.setX(Pixmap.width() - 1 - Point.x());
 
 			ui->CursorPosition->setText("X:" + QString::number(Point.x()) + ", Y:" + QString::number(Point.y()));
 		}
