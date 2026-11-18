@@ -68,7 +68,8 @@ namespace DynExpModule::ImageViewer
 		void UpdateHistogramImpl();
 
 		/**
-		 * @brief Rebuilds Pixmap from RawImage, applying auto contrast and mirroring if enabled.
+		 * @brief Rebuilds #Pixmap from #RawImage, applying auto contrast and mirroring if they are
+		 * enabled in the user interface. #RawImage is not modified.
 		*/
 		void RenderPixmap() noexcept;
 
@@ -104,8 +105,8 @@ namespace DynExpModule::ImageViewer
 		void OnZoomInClicked();
 		void OnZoomOutClicked();
 		void OnZoomFitClicked(bool Checked);
-		void OnAutoContrastToggled(bool Checked);
-		void OnMirrorToggled(bool Checked);
+		void OnAutoContrastToggled(bool Checked);		//!< Qt slot called when the auto contrast check box is toggled. Redraws the displayed image.
+		void OnMirrorToggled(bool Checked);				//!< Qt slot called when the mirror check box is toggled. Redraws the displayed image.
 		void OnImageMouseMove(QMouseEvent* Event);
 	};
 
