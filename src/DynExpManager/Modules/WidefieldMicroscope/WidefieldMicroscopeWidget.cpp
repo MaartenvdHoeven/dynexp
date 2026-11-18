@@ -10,15 +10,13 @@ namespace DynExpModule::Widefield
 {
 	namespace
 	{
-		/**
-		 * @brief Builds a Grayscale8 copy of a grayscale image with its intensity range stretched for display.
-		 * The darkest LowerClipPercent % of the pixels are displayed black, the brightest UpperClipPercent % white,
-		 * and the values in between are mapped linearly. The source image is not modified.
-		*/
+		// Builds a Grayscale8 copy of a grayscale image with its intensity range stretched for display.
+		// The darkest LowerClipPercent % of the pixels are displayed black, the brightest UpperClipPercent % white,
+		// and the values in between are mapped linearly. The source image is not modified.
 		template <typename PixelType>
 		QImage StretchGrayscaleImage(const QImage& Image, double LowerClipPercent, double UpperClipPercent)
 		{
-			constexpr std::size_t NumBins = static_cast<std::size_t>(std::numeric_limits<PixelType>::max()) + 1;
+			constexpr size_t NumBins = static_cast<size_t>(std::numeric_limits<PixelType>::max()) + 1;
 			const int Width = Image.width();
 			const int Height = Image.height();
 			const auto NumPixels = static_cast<unsigned long long>(Width) * static_cast<unsigned long long>(Height);
@@ -40,7 +38,7 @@ namespace DynExpModule::Widefield
 			const auto UpperClipCount = ClipCount(UpperClipPercent);
 
 			// Low: smallest value with more than LowerClipCount pixels at or below it.
-			std::size_t Low = 0;
+			size_t Low = 0;
 			for (unsigned long long Cumulative = 0; Low < NumBins - 1; ++Low)
 			{
 				Cumulative += Histogram[Low];
@@ -49,7 +47,7 @@ namespace DynExpModule::Widefield
 			}
 
 			// High: largest value with more than UpperClipCount pixels at or above it.
-			std::size_t High = NumBins - 1;
+			size_t High = NumBins - 1;
 			for (unsigned long long Cumulative = 0; High > 0; --High)
 			{
 				Cumulative += Histogram[High];
@@ -66,7 +64,7 @@ namespace DynExpModule::Widefield
 
 			std::vector<uchar> LUT(NumBins);
 			const double Scale = 255.0 / static_cast<double>(High - Low);
-			for (std::size_t Value = 0; Value < NumBins; ++Value)
+			for (size_t Value = 0; Value < NumBins; ++Value)
 			{
 				if (Value <= Low)
 					LUT[Value] = 0;
@@ -91,10 +89,8 @@ namespace DynExpModule::Widefield
 			return Result;
 		}
 
-		/**
-		 * @brief Returns a contrast-stretched copy of Image for display, or a null image if Image is null or
-		 * its format is not supported. In the latter case, the caller displays Image unmodified.
-		*/
+		// Returns a contrast-stretched copy of Image for display, or a null image if Image is null or
+		// its format is not supported. In the latter case, the caller displays Image unmodified.
 		QImage MakeAutoContrastImage(const QImage& Image, double LowerClipPercent, double UpperClipPercent)
 		{
 			if (Image.isNull())
@@ -779,7 +775,7 @@ namespace DynExpModule::Widefield
 		MainGraphicsPixmap.detach();						// just to be sure...
 	}
 
-	void WidefieldMicroscopeWidget::OnAutoContrastToggled(bool Checked)
+	void WidefieldMicroscopeWidget::OnAutoContrastToggled([[maybe_unused]] bool Checked)
 	{
 		RenderMainGraphicsPixmap();
 		UpdateScene();

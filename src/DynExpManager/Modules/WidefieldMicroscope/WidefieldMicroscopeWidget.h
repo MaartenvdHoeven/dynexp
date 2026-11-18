@@ -164,7 +164,8 @@ namespace DynExpModule::Widefield
 		bool StoreTWEmitterListSelection();
 
 		/**
-		 * @brief Rebuilds MainGraphicsPixmap from MainGraphicsRawImage, applying auto contrast if enabled.
+		 * @brief Rebuilds #MainGraphicsPixmap from #MainGraphicsRawImage, applying auto contrast if
+		 * #AutoContrastAction is checked. #MainGraphicsRawImage is not modified.
 		*/
 		void RenderMainGraphicsPixmap() noexcept;
 
@@ -178,9 +179,9 @@ namespace DynExpModule::Widefield
 		QGraphicsPixmapItem* MainGraphicsPixmapItem;
 		QGraphicsScene* MainGraphicsScene;
 		QImage MainGraphicsRawImage;					//!< Unmodified copy of the last image, kept to redraw it when auto contrast is toggled.
-		QAction* AutoContrastAction = nullptr;
-		double AutoContrastLowerClipPercent = .0;
-		double AutoContrastUpperClipPercent = .0;
+		QAction* AutoContrastAction = nullptr;			//!< Context menu entry of #MainGraphicsView to switch auto contrast on and off.
+		double AutoContrastLowerClipPercent = .0;		//!< Percentage (0 to 100) of the darkest pixels displayed black by auto contrast. Display only.
+		double AutoContrastUpperClipPercent = .0;		//!< Percentage (0 to 100) of the brightest pixels displayed white by auto contrast. Display only.
 		QPoint CurrentConfocalSpotPosition;
 		QString SaveWidefieldImageFilename;
 
@@ -210,7 +211,7 @@ namespace DynExpModule::Widefield
 		void OnZoomInClicked();
 		void OnZoomOutClicked();
 		void OnZoomFitClicked(bool Checked);
-		void OnAutoContrastToggled(bool Checked);
+		void OnAutoContrastToggled(bool Checked);		//!< Qt slot called when #AutoContrastAction is toggled. Redraws the displayed image.
 		void OnImageMouseMove(QMouseEvent* Event);
 		void OnCellIDContextMenuRequested(const QPoint& Position);
 		void OnEmitterListCellClicked(int Row, int Column);
