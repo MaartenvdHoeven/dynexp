@@ -210,10 +210,10 @@ namespace DynExpModule::Widefield
 		void SetCurrentImage(QImage&& Image) { CurrentImage = std::move(Image); CurrentImageChanged = true; }
 		bool IsCurrentImageAvlbl() const { return !CurrentImage.isNull() && CurrentImageChanged; }
 		void ResetCurrentImageAvlbl() noexcept { CurrentImageChanged = false; }
-		double GetAutoContrastLowerClipPercent() const noexcept { return AutoContrastLowerClipPercent; }
-		void SetAutoContrastLowerClipPercent(double Percent) noexcept { AutoContrastLowerClipPercent = Percent; }
-		double GetAutoContrastUpperClipPercent() const noexcept { return AutoContrastUpperClipPercent; }
-		void SetAutoContrastUpperClipPercent(double Percent) noexcept { AutoContrastUpperClipPercent = Percent; }
+		double GetAutoContrastLowerClipPercent() const noexcept { return AutoContrastLowerClipPercent; }				//!< Returns #AutoContrastLowerClipPercent.
+		void SetAutoContrastLowerClipPercent(double Percent) noexcept { AutoContrastLowerClipPercent = Percent; }	//!< Sets #AutoContrastLowerClipPercent to @p Percent.
+		double GetAutoContrastUpperClipPercent() const noexcept { return AutoContrastUpperClipPercent; }				//!< Returns #AutoContrastUpperClipPercent.
+		void SetAutoContrastUpperClipPercent(double Percent) noexcept { AutoContrastUpperClipPercent = Percent; }	//!< Sets #AutoContrastUpperClipPercent to @p Percent.
 		const auto& GetCellID() const noexcept { return CurrentCellID; }
 		const auto& GetLastCellID() const noexcept { return LastCellID; }
 		void SetCellID(const DynExpInstr::WidefieldLocalizationCellIDType& CellID) { LastCellID = CurrentCellID; CurrentCellID = CellID; }
@@ -408,8 +408,8 @@ namespace DynExpModule::Widefield
 
 		QImage CurrentImage;
 		bool CurrentImageChanged;
-		double AutoContrastLowerClipPercent;			//!< Percentage of darkest pixels displayed black by auto contrast. Display only.
-		double AutoContrastUpperClipPercent;			//!< Percentage of brightest pixels displayed white by auto contrast. Display only.
+		double AutoContrastLowerClipPercent;			//!< Percentage (0 to 100) of the darkest pixels displayed black by auto contrast. Display only.
+		double AutoContrastUpperClipPercent;			//!< Percentage (0 to 100) of the brightest pixels displayed white by auto contrast. Display only.
 		DynExpInstr::WidefieldLocalizationCellIDType CurrentCellID;
 		DynExpInstr::WidefieldLocalizationCellIDType LastCellID;
 		LocalizedPositionsMapType LocalizedPositions;
@@ -537,11 +537,11 @@ namespace DynExpModule::Widefield
 			false, 100, .01, 10000, 1, 2 };
 		Param<ParamsConfigDialog::NumberType> AutoContrastLowerClipPercent = { *this, "AutoContrastLowerClipPercent", "Auto contrast: dark pixels clipped (%)",
 			"Percentage of the darkest pixels of the widefield image which are displayed black if auto contrast is enabled. Only affects the displayed image, not saved or analyzed images.",
-			true, 1, 0, 50, .01, 3 };
+			true, 1, 0, 50, .01, 3 };																	//!< Percentage (0 to 50) of the darkest widefield image pixels displayed black by auto contrast
 		Param<ParamsConfigDialog::NumberType> AutoContrastUpperClipPercent = { *this, "AutoContrastUpperClipPercent", "Auto contrast: bright pixels clipped (%)",
 			"Percentage of the brightest pixels of the widefield image which are displayed white if auto contrast is enabled. Only affects the displayed image, not saved or analyzed images.",
-			true, .05, 0, 50, .01, 3 };
-		Param<DynExp::ObjectLink<DynExpInstr::TimeTagger>> SPD1 ={ *this, GetCore().GetInstrumentManager(),
+			true, .05, 0, 50, .01, 3 };																	//!< Percentage (0 to 50) of the brightest widefield image pixels displayed white by auto contrast
+		Param<DynExp::ObjectLink<DynExpInstr::TimeTagger>> SPD1 = { *this, GetCore().GetInstrumentManager(),
 			"SPD1", "SPD 1", "First single photon detector for confocal light collection", DynExpUI::Icons::Instrument, true };
 		Param<DynExp::ObjectLink<DynExpInstr::TimeTagger>> SPD2 = { *this, GetCore().GetInstrumentManager(),
 			"SPD2", "SPD 2", "Second single photon detector for confocal light collection", DynExpUI::Icons::Instrument, true };
