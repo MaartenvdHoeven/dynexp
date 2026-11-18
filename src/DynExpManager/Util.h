@@ -530,8 +530,14 @@ namespace Util
 		BlobDataType& operator=(const BlobDataType& Other);		//!< Copy-assigns data from @p Other.
 		BlobDataType& operator=(BlobDataType&& Other) noexcept;	//!< Move-assigns data from @p Other. @p Other is empty afterwards.
 
-		void Reserve(size_t Size);								//!< Reserves @p Size bytes of memory freeing any previously reserved memory.
-		void Assign(size_t Size, const DataType Data);			//!< Copies @p Size bytes from @p Data to the buffer freeing any previously reserved memory.
+		/**
+		 * @brief Reserves @p Size bytes of memory, freeing any previously reserved memory.
+		 * Does nothing if @p Size already matches the current buffer size.
+		 * @param Size New size of the buffer.
+		*/
+		void Reserve(size_t Size);
+
+		void Assign(size_t Size, const DataType Data);			//!< Copies @p Size bytes from @p Data to the buffer making use of @p Reserve() to allocate memory.
 		void Reset();											//!< Frees any reserved memory.
 		DataPtrType::element_type* Release() noexcept;			//!< Releases ownership of the stored buffer returning a pointer to it and leaving this instance empty.
 		auto GetPtr() noexcept { return DataPtr.get(); }		//!< Returns a pointer to the stored buffer.
@@ -738,6 +744,7 @@ namespace Util
 	 * when one of the types, @p FromT or @p ToT, is signed and the respective other type is unsigned or when @p FromT is non-integral.
 	 * @throws UnderflowException is thrown in case the conversion of @p Value from type @p FromT to type @p ToT would yield an underflow
 	 * when one of the types, @p FromT or @p ToT, is signed and the respective other type is unsigned or when @p FromT is non-integral.
+	 * @throws InvalidArgException is thrown in case of a conversion of @p Value from type @p double when @p Value is not a finite number.
 	*/
 	template <typename ToT, typename FromT, std::enable_if_t<
 		std::is_integral_v<ToT> && std::is_integral_v<FromT> &&
@@ -759,7 +766,7 @@ namespace Util
 	ToT NumToT(const FromT Value)
 	{
 		if (Value < std::numeric_limits<ToT>::lowest() || Value > std::numeric_limits<ToT>::max())
-			throw OutOfRangeException("Cannot convert Value into destiny type since this would cause an underflow or an overflow.");
+			throw OutOfRangeException("Cannot convert Value into destination type since this would cause an underflow or an overflow.");
 
 		return static_cast<ToT>(Value);
 	}
@@ -775,7 +782,7 @@ namespace Util
 	ToT NumToT(const FromT Value)
 	{
 		if (Value > static_cast<std::make_unsigned_t<ToT>>(std::numeric_limits<ToT>::max()))
-			throw OverflowException("Cannot convert Value into destiny type since this would cause an overflow.");
+			throw OverflowException("Cannot convert Value into destination type since this would cause an overflow.");
 
 		return static_cast<ToT>(Value);
 	}
@@ -791,9 +798,9 @@ namespace Util
 	ToT NumToT(const FromT Value)
 	{
 		if (Value < 0)
-			throw UnderflowException("Cannot convert Value into destiny type since this would cause an underflow.");
+			throw UnderflowException("Cannot convert Value into destination type since this would cause an underflow.");
 		if (static_cast<std::make_unsigned_t<FromT>>(Value) > std::numeric_limits<ToT>::max())
-			throw OverflowException("Cannot convert Value into destiny type since this would cause an overflow.");
+			throw OverflowException("Cannot convert Value into destination type since this would cause an overflow.");
 
 		return static_cast<ToT>(Value);
 	}
@@ -802,17 +809,18 @@ namespace Util
 	 * @copydoc NumToT
 	*/
 	template <typename ToT, std::enable_if_t<
-		std::is_integral_v<ToT> &&
-		!std::is_same_v<std::remove_cv_t<ToT>, double>, int> = 0
+		std::is_integral_v<ToT>, int> = 0
 	>
 	ToT NumToT(const double Value)
 	{
 		const double RoundedValue = std::round(Value);
 
+		if (!std::isfinite(RoundedValue))
+			throw InvalidArgException("Cannot convert double Value since it does not represent a finite number.");
 		if (RoundedValue < static_cast<double>(std::numeric_limits<ToT>::lowest()))
-			throw UnderflowException("Cannot convert Value into double since this would cause an underflow.");
-		if (RoundedValue > static_cast<double>(std::numeric_limits<ToT>::max()))
-			throw OverflowException("Cannot convert Value into double since this would cause an overflow.");
+			throw UnderflowException("Cannot convert double Value into destination since this would cause an underflow.");
+		if (RoundedValue >= static_cast<double>(std::exp2(std::numeric_limits<ToT>::digits)))
+			throw OverflowException("Cannot convert double Value into destination since this would cause an overflow.");
 
 		return static_cast<ToT>(RoundedValue);
 	}
@@ -1076,7 +1084,7 @@ namespace Util
 		 * @brief Constructs a Warning moving @p Other's warning data to this instance clearing @p Other's warning data.
 		 * @param Other Warning to move from
 		*/
-		Warning(Warning&& Other) noexcept;
+		Warning(Warning&& Other);
 
 		virtual ~Warning() = default;
 
